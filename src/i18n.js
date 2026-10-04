@@ -11,6 +11,8 @@ export const translations = {
     'app.title': 'Exam Seat Plan',
     'app.subtitle': 'Automatic room seating',
     'lang.switchTo': 'বাংলা',
+    'lang.en': 'English',
+    'lang.bn': 'বাংলা',
     'nav.setup': 'Setup',
     'nav.plan': 'Seat Plan',
     'nav.search': 'Search',
@@ -29,11 +31,53 @@ export const translations = {
       'Reset all rooms and students back to the sample data? This cannot be undone.',
     'reset.confirmYes': 'Yes, reset',
     'reset.confirmNo': 'Cancel',
+
+    // Setup page
+    'setup.institution.title': 'Institution',
+    'setup.institution.name': 'Institution name',
+    'setup.institution.logo': 'Institution logo',
+    'setup.institution.logoChoose': 'Choose logo',
+    'setup.institution.logoRemove': 'Remove logo',
+    'setup.institution.language': 'App language',
+    'setup.exam.title': 'Exam',
+    'setup.exam.id': 'Exam ID',
+    'setup.exam.name': 'Title',
+    'setup.exam.date': 'Date',
+    'setup.exam.start': 'Start time',
+    'setup.exam.end': 'End time',
+    'setup.rooms.title': 'Rooms',
+    'setup.rooms.size': 'Size',
+    'setup.rooms.bench': 'Seats per bench',
+    'setup.rooms.broken': 'Broken',
+    'setup.backup.title': 'Backup',
+    'setup.backup.export': 'Export backup (JSON)',
+    'setup.backup.import': 'Import backup',
+    'setup.backup.hint':
+      'All data lives in this browser only. Export a backup before clearing browser data.',
+
+    // Shared
+    'common.none': 'None',
+    'data.seats': 'Usable seats',
+    'reset.done': 'Sample data restored.',
+
+    // Import / logo errors
+    'import.ok': 'Backup imported successfully.',
+    'import.error.bad-json': 'That file is not valid JSON.',
+    'import.error.not-object': 'That file is not a seat plan backup.',
+    'import.error.bad-version':
+      'This backup was created by a newer version of the app.',
+    'import.error.too-large': 'That file is too large (limit 5 MB).',
+    'import.error.read': 'The file could not be read.',
+    'logo.error.not-image': 'Please choose an image file.',
+    'logo.error.too-large': 'Logo is too large (limit 150 KB).',
+    'logo.error.read': 'The image could not be read.',
   },
   bn: {
     'app.title': 'পরীক্ষার সিট প্ল্যান',
     'app.subtitle': 'স্বয়ংক্রিয় কক্ষ বিন্যাস',
     'lang.switchTo': 'English',
+    'lang.en': 'English',
+    'lang.bn': 'বাংলা',
     'nav.setup': 'সেটআপ',
     'nav.plan': 'সিট প্ল্যান',
     'nav.search': 'খোঁজ',
@@ -51,6 +95,45 @@ export const translations = {
     'reset.confirm': 'সব কক্ষ ও শিক্ষার্থীকে নমুনা ডেটায় ফিরিয়ে নিতে চান? এটি ফিরিয়ে আনা যাবে না।',
     'reset.confirmYes': 'হ্যাঁ, রিসেট করুন',
     'reset.confirmNo': 'বাতিল',
+
+    // Setup page
+    'setup.institution.title': 'প্রতিষ্ঠান',
+    'setup.institution.name': 'প্রতিষ্ঠানের নাম',
+    'setup.institution.logo': 'প্রতিষ্ঠানের লোগো',
+    'setup.institution.logoChoose': 'লোগো নির্বাচন করুন',
+    'setup.institution.logoRemove': 'লোগো সরান',
+    'setup.institution.language': 'অ্যাপের ভাষা',
+    'setup.exam.title': 'পরীক্ষা',
+    'setup.exam.id': 'পরীক্ষা আইডি',
+    'setup.exam.name': 'শিরোনাম',
+    'setup.exam.date': 'তারিখ',
+    'setup.exam.start': 'শুরুর সময়',
+    'setup.exam.end': 'শেষের সময়',
+    'setup.rooms.title': 'কক্ষসমূহ',
+    'setup.rooms.size': 'আকার',
+    'setup.rooms.bench': 'বেঞ্চে আসন',
+    'setup.rooms.broken': 'নষ্ট',
+    'setup.backup.title': 'ব্যাকআপ',
+    'setup.backup.export': 'ব্যাকআপ এক্সপোর্ট (JSON)',
+    'setup.backup.import': 'ব্যাকআপ ইমপোর্ট',
+    'setup.backup.hint':
+      'সব ডেটা শুধু এই ব্রাউজারে থাকে। ব্রাউজারের ডেটা মুছে ফেলার আগে ব্যাকআপ নিন।',
+
+    // Shared
+    'common.none': 'নেই',
+    'data.seats': 'ব্যবহারযোগ্য আসন',
+    'reset.done': 'নমুনা ডেটা পুনরুদ্ধার হয়েছে।',
+
+    // Import / logo errors
+    'import.ok': 'ব্যাকআপ সফলভাবে আমদানি হয়েছে।',
+    'import.error.bad-json': 'ফাইলটি বৈধ JSON নয়।',
+    'import.error.not-object': 'ফাইলটি সিট প্ল্যান ব্যাকআপ নয়।',
+    'import.error.bad-version': 'এই ব্যাকআপটি অ্যাপের নতুন সংস্করণে তৈরি হয়েছে।',
+    'import.error.too-large': 'ফাইলটি অনেক বড় (সর্বোচ্চ ৫ মেগাবাইট)।',
+    'import.error.read': 'ফাইলটি পড়া যায়নি।',
+    'logo.error.not-image': 'একটি ছবির ফাইল নির্বাচন করুন।',
+    'logo.error.too-large': 'লোগো অনেক বড় (সর্বোচ্চ ১৫০ কিলোবাইট)।',
+    'logo.error.read': 'ছবিটি পড়া যায়নি।',
   },
 }
 
