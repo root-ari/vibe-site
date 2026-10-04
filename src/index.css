@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Noto Sans", "Noto Sans Bengali", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Noto Sans covers Latin, Noto Sans Bengali covers Bangla glyphs. */
+body {
+  font-family: "Noto Sans", "Noto Sans Bengali", ui-sans-serif, system-ui, sans-serif;
+}
