@@ -25,7 +25,8 @@ const selectClass =
 
 export default function ImportPanel() {
   const { t } = useLang()
-  const { rooms, students, setRooms, setStudents } = useData()
+  const { rooms, students, setRooms, setStudents, exam, setExamStudentIds } =
+    useData()
 
   const [mode, setMode] = useState('students')
   const [paste, setPaste] = useState('')
@@ -108,8 +109,19 @@ export default function ImportPanel() {
 
   function handleApply() {
     if (!report || report.accepted.length === 0) return
-    if (mode === 'students') setStudents([...students, ...report.accepted])
-    else setRooms([...rooms, ...report.accepted])
+    if (mode === 'students') {
+      const incoming = report.accepted
+      setStudents([...students, ...incoming])
+      // Imported students also join the active exam's own roster.
+      if (exam) {
+        setExamStudentIds([
+          ...exam.studentIds,
+          ...incoming.map((student) => student.id),
+        ])
+      }
+    } else {
+      setRooms([...rooms, ...report.accepted])
+    }
     setDone(report.accepted.length)
     clear()
   }

@@ -10,9 +10,10 @@ import {
 } from './storage'
 import ImportPanel from './ImportPanel.jsx'
 import PlanPage from './PlanPage.jsx'
+import ExamsPage from './ExamsPage.jsx'
 
 // Tab ids double as the i18n key suffix, e.g. "nav.setup".
-const TABS = ['setup', 'plan', 'search']
+const TABS = ['setup', 'exams', 'plan', 'search']
 
 const inputClass =
   'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200'
@@ -65,10 +66,11 @@ function SetupPage() {
     state,
     institution,
     exam,
+    exams,
     rooms,
     students,
     setInstitution,
-    setExam,
+    updateExam,
     replaceState,
     resetData,
   } = useData()
@@ -116,7 +118,8 @@ function SetupPage() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatCard label={t('data.exams')} value={exams.length} />
         <StatCard label={t('data.rooms')} value={rooms.length} />
         <StatCard label={t('data.students')} value={students.length} />
         <StatCard label={t('data.seats')} value={totalCapacity(rooms)} />
@@ -178,20 +181,21 @@ function SetupPage() {
         </div>
       </Card>
 
-      <Card title={t('setup.exam.title')}>
+      {exam && (
+        <Card title={t('setup.exam.title')}>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field label={t('setup.exam.id')}>
             <input
               className={inputClass}
               value={exam.id}
-              onChange={(event) => setExam({ id: event.target.value })}
+              onChange={(event) => updateExam({ id: event.target.value })}
             />
           </Field>
           <Field label={t('setup.exam.name')}>
             <input
               className={inputClass}
               value={exam.title}
-              onChange={(event) => setExam({ title: event.target.value })}
+              onChange={(event) => updateExam({ title: event.target.value })}
             />
           </Field>
           <Field label={t('setup.exam.date')}>
@@ -199,7 +203,7 @@ function SetupPage() {
               type="date"
               className={inputClass}
               value={exam.date}
-              onChange={(event) => setExam({ date: event.target.value })}
+              onChange={(event) => updateExam({ date: event.target.value })}
             />
           </Field>
           <Field label={t('setup.exam.start')}>
@@ -207,7 +211,7 @@ function SetupPage() {
               type="time"
               className={inputClass}
               value={exam.startTime}
-              onChange={(event) => setExam({ startTime: event.target.value })}
+              onChange={(event) => updateExam({ startTime: event.target.value })}
             />
           </Field>
           <Field label={t('setup.exam.end')}>
@@ -215,11 +219,12 @@ function SetupPage() {
               type="time"
               className={inputClass}
               value={exam.endTime}
-              onChange={(event) => setExam({ endTime: event.target.value })}
+              onChange={(event) => updateExam({ endTime: event.target.value })}
             />
           </Field>
         </div>
       </Card>
+      )}
 
       <ImportPanel />
 
@@ -399,6 +404,7 @@ function Shell() {
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:py-8">
         {tab === 'setup' && <SetupPage />}
+        {tab === 'exams' && <ExamsPage />}
         {tab === 'plan' && <PlanPage />}
         {tab === 'search' && (
           <Placeholder title={t('page.search.title')} text={t('page.search.text')} />

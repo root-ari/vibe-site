@@ -8,6 +8,7 @@ import {
   hydratePlan,
   normalizeOptions,
 } from './seating.js'
+import { conflictingRoomIds } from './exams.js'
 
 const COURSE_COLORS = [
   'border-indigo-300 bg-indigo-100 text-indigo-900',
@@ -41,25 +42,38 @@ const inputClass =
 
 export default function PlanPage() {
   const { t } = useLang()
-  const { rooms, students, exam, plan, setPlan } = useData()
+  const { rooms, examStudents, exams, plans, activeExamId, exam, plan, setPlan } =
+    useData()
 
   const [options, setOptions] = useState(() => normalizeOptions(DEFAULT_OPTIONS))
   const [result, setResult] = useState(() =>
-    plan ? hydratePlan(plan, rooms, students, DEFAULT_OPTIONS) : null,
+    plan ? hydratePlan(plan, rooms, examStudents, DEFAULT_OPTIONS) : null,
   )
   const optionsRef = useRef(options)
-useEffect(() => {
+  useEffect(() => {
     optionsRef.current = options
   }, [options])
 
+  // Rooms already taken by another exam whose slot overlaps: never offered.
+  const blockedRoomIds = useMemo(
+    () => conflictingRoomIds({ exams, plans, activeExamId }),
+    [exams, plans, activeExamId],
+  )
+  const usableRooms = useMemo(
+    () => rooms.filter((room) => !blockedRoomIds.has(room.id)),
+    [rooms, blockedRoomIds],
+  )
+
   // Keep the grids in step with whatever plan is stored (reload, import, reset).
   useEffect(() => {
-    if (plan) setResult(hydratePlan(plan, rooms, students, optionsRef.current))
-  }, [plan, rooms, students])
+    if (plan) {
+      setResult(hydratePlan(plan, usableRooms, examStudents, optionsRef.current))
+    }
+  }, [plan, usableRooms, examStudents])
 
   const courses = useMemo(() => {
     const list = Array.from(
-      new Set(students.map((student) => student.course).filter(Boolean)),
+      new Set(examStudents.map((student) => student.course).filter(Boolean)),
     ).sort()
     return {
       list,
@@ -70,20 +84,20 @@ useEffect(() => {
         ]),
       ),
     }
-  }, [students])
+  }, [examStudents])
 
   const studentById = useMemo(() => {
     const map = new Map()
-    for (const student of students) map.set(String(student.id), student)
+    for (const student of examStudents) map.set(String(student.id), student)
     return map
-  }, [students])
+  }, [examStudents])
 
   function run(next) {
     const opts = normalizeOptions(next)
     const generated = generatePlan({
-      rooms,
-      students,
-      examId: exam.id,
+      rooms: usableRooms,
+      students: examStudents,
+      examId: exam ? exam.id : '',
       options: opts,
     })
     setOptions(opts)
@@ -169,6 +183,16 @@ useEffect(() => {
           </button>
         </div>
       </section>
+
+      {blockedRoomIds.size > 0 && (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          {t('plan.blockedRooms')}:{' '}
+          {rooms
+            .filter((room) => blockedRoomIds.has(room.id))
+            .map((room) => room.name)
+            .join(', ')}
+        </p>
+      )}
 
       {result ? (
         <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">

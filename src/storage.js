@@ -4,8 +4,11 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from 'react'
+
+import { nextExamId } from './exams.js'
 
 /**
  * Single state module for the exam seat plan app.
@@ -15,7 +18,7 @@ import {
  * and the React context the UI reads from. No backend: localStorage only.
  */
 
-export const SCHEMA_VERSION = 1
+export const SCHEMA_VERSION = 2
 
 const STATE_KEY = 'seatplan.state'
 const LEGACY_ROOMS_KEY = 'seatplan.rooms'
@@ -88,6 +91,25 @@ export const DEFAULT_EXAM = {
   endTime: '12:00',
 }
 
+export const DEFAULT_EXAMS = [
+  {
+    id: 'exam-1',
+    title: 'Mid Term Examination',
+    date: '2026-05-12',
+    startTime: '09:00',
+    endTime: '12:00',
+    studentIds: DEFAULT_STUDENTS.map((student) => student.id),
+  },
+  {
+    id: 'exam-2',
+    title: 'Practical Examination',
+    date: '2026-05-12',
+    startTime: '14:00',
+    endTime: '17:00',
+    studentIds: DEFAULT_STUDENTS.map((student) => student.id),
+  },
+]
+
 // A Plan holds no seats of its own - just who sits where, who did not get
 // a seat, the shuffle seed and the constraints that were applied.
 export function createEmptyPlan(examId) {
@@ -104,10 +126,11 @@ export function createDefaultState() {
   return {
     version: SCHEMA_VERSION,
     institution: clone(DEFAULT_INSTITUTION),
-    exam: clone(DEFAULT_EXAM),
     rooms: clone(DEFAULT_ROOMS),
     students: clone(DEFAULT_STUDENTS),
-    plan: null,
+    exams: clone(DEFAULT_EXAMS),
+    plans: {},
+    activeExamId: DEFAULT_EXAMS[0].id,
   }
 }
 
@@ -152,12 +175,16 @@ function normalizeInstitution(raw) {
 
 function normalizeExam(raw) {
   const source = raw && typeof raw === 'object' ? raw : {}
+  const studentIds = Array.isArray(source.studentIds)
+    ? Array.from(new Set(source.studentIds.map(text).filter(Boolean)))
+    : []
   return {
     id: text(source.id) || DEFAULT_EXAM.id,
     title: text(source.title) || DEFAULT_EXAM.title,
     date: text(source.date),
     startTime: text(source.startTime) || DEFAULT_EXAM.startTime,
     endTime: text(source.endTime) || DEFAULT_EXAM.endTime,
+    studentIds,
   }
 }
 
@@ -255,6 +282,16 @@ function withUniqueIds(rooms) {
   })
 }
 
+function withUniqueExamIds(exams) {
+  const used = new Set()
+  return exams.map((exam, index) => {
+    let id = exam.id || `exam-${index + 1}`
+    while (used.has(id)) id = `${id}-${index + 1}`
+    used.add(id)
+    return { ...exam, id }
+  })
+}
+
 function normalizeState(raw) {
   const source = raw && typeof raw === 'object' ? raw : {}
   const rooms = withUniqueIds(
@@ -263,13 +300,42 @@ function normalizeState(raw) {
   const students = (Array.isArray(source.students) ? source.students : [])
     .map(normalizeStudent)
     .filter((student) => student.id)
+
+  const known = new Set(students.map((student) => student.id))
+  const exams = withUniqueExamIds(
+    (Array.isArray(source.exams) ? source.exams : []).map(normalizeExam),
+  )
+  // Drop roster entries for students that are no longer in the catalogue.
+  for (const exam of exams) {
+    exam.studentIds = exam.studentIds.filter((id) => known.has(id))
+  }
+
+  // Plans live in a map keyed by exam id, and only for exams that still exist.
+  const stored =
+    source.plans && typeof source.plans === 'object' && !Array.isArray(source.plans)
+      ? source.plans
+      : {}
+  const plans = {}
+  for (const exam of exams) {
+    const plan = normalizePlan(stored[exam.id], exam.id)
+    if (plan) plans[exam.id] = plan
+  }
+
+  const wanted = text(source.activeExamId)
+  const activeExamId = exams.some((exam) => exam.id === wanted)
+    ? wanted
+    : exams.length > 0
+      ? exams[0].id
+      : ''
+
   return {
     version: SCHEMA_VERSION,
     institution: normalizeInstitution(source.institution),
-    exam: normalizeExam(source.exam),
     rooms,
     students,
-    plan: normalizePlan(source.plan, source.exam && source.exam.id),
+    exams,
+    plans,
+    activeExamId,
   }
 }
 
@@ -287,6 +353,36 @@ function upgradeV0toV1(source) {
   }
 }
 
+// v1 had one `exam`, one flat `students` list and one `plan`. v2 keeps the same
+// student records but lets each exam carry its own roster and its own plan.
+function upgradeV1toV2(source) {
+  const single = source.exam
+  if (!single || typeof single !== 'object') {
+    // No exam in the old data, but the rooms and students must survive.
+    return {
+      institution: source.institution,
+      rooms: source.rooms,
+      students: source.students,
+      exams: [],
+      plans: {},
+      activeExamId: '',
+    }
+  }
+  const id = text(single.id) || 'exam-1'
+  const studentIds = (Array.isArray(source.students) ? source.students : [])
+    .map((student) => text(student && student.id))
+    .filter(Boolean)
+  return {
+    institution: source.institution,
+    rooms: source.rooms,
+    students: source.students,
+    exams: [{ ...single, studentIds }],
+    plans:
+      source.plan && typeof source.plan === 'object' ? { [id]: source.plan } : {},
+    activeExamId: id,
+  }
+}
+
 export function migrate(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     throw new Error('bad-json')
@@ -295,7 +391,11 @@ export function migrate(raw) {
   if (version > SCHEMA_VERSION) {
     throw new Error('bad-version')
   }
-  return normalizeState(version === 0 ? upgradeV0toV1(raw) : raw)
+  if (version < 2) {
+    const v1 = version === 0 ? upgradeV0toV1(raw) : raw
+    return normalizeState(upgradeV1toV2(v1))
+  }
+  return normalizeState(raw)
 }
 
 /* --------------------------- persistence --------------------------- */
@@ -437,12 +537,74 @@ export function DataProvider({ children }) {
       })),
     [],
   )
-  const setExam = useCallback(
+  const setActiveExam = useCallback(
+    (id) => setState((current) => ({ ...current, activeExamId: id })),
+    [],
+  )
+  const updateExam = useCallback(
     (changes) =>
       setState((current) => ({
         ...current,
-        exam: normalizeExam({ ...current.exam, ...changes }),
+        exams: current.exams.map((exam) =>
+          exam.id === current.activeExamId
+            ? normalizeExam({ ...exam, ...changes })
+            : exam,
+        ),
       })),
+    [],
+  )
+  const setExamStudentIds = useCallback(
+    (ids) => updateExam({ studentIds: Array.from(new Set(ids || [])) }),
+    [updateExam],
+  )
+  const addExam = useCallback(
+    (exam) =>
+      setState((current) => {
+        const created = normalizeExam({
+          ...(exam || {}),
+          id: nextExamId(current.exams),
+        })
+        return {
+          ...current,
+          exams: [...current.exams, created],
+          activeExamId: created.id,
+        }
+      }),
+    [],
+  )
+  const duplicateExam = useCallback(
+    (id) =>
+      setState((current) => {
+        const source = current.exams.find((exam) => exam.id === id)
+        if (!source) return current
+        // A copy keeps the same slot and roster but starts with no plan.
+        const copy = normalizeExam({ ...source, id: nextExamId(current.exams) })
+        return {
+          ...current,
+          exams: [...current.exams, copy],
+          activeExamId: copy.id,
+        }
+      }),
+    [],
+  )
+  const deleteExam = useCallback(
+    (id) =>
+      setState((current) => {
+        const exams = current.exams.filter((exam) => exam.id !== id)
+        const plans = { ...current.plans }
+        delete plans[id]
+        return {
+          ...current,
+          exams,
+          plans,
+          activeExamId:
+            current.activeExamId === id
+              ? exams.length > 0
+                ? exams[0].id
+                : ''
+              : current.activeExamId,
+        }
+      }),
     [],
   )
   const setRooms = useCallback(
@@ -455,32 +617,68 @@ export function DataProvider({ children }) {
   )
   const setStudents = useCallback(
     (students) =>
-      setState((current) => ({
-        ...current,
-        students: (students || []).map(normalizeStudent).filter((student) => student.id),
-      })),
+      setState((current) => {
+        const next = (students || [])
+          .map(normalizeStudent)
+          .filter((student) => student.id)
+        const known = new Set(next.map((student) => student.id))
+        // Keep every exam roster pointing at students that still exist.
+        return {
+          ...current,
+          students: next,
+          exams: current.exams.map((exam) => ({
+            ...exam,
+            studentIds: exam.studentIds.filter((id) => known.has(id)),
+          })),
+        }
+      }),
     [],
   )
   const setPlan = useCallback(
     (plan) =>
-      setState((current) => ({ ...current, plan: normalizePlan(plan, current.exam.id) })),
+      setState((current) => {
+        if (!current.activeExamId) return current
+        const normalized = normalizePlan(plan, current.activeExamId)
+        if (!normalized) return current
+        return {
+          ...current,
+          plans: { ...current.plans, [current.activeExamId]: normalized },
+        }
+      }),
     [],
   )
   // Used by "Import backup" to swap the whole model in one go.
   const replaceState = useCallback((next) => setState(normalizeState(next)), [])
   const resetData = useCallback(() => setState(createDefaultState()), [])
 
+  const activeExamId = state.activeExamId
+  const exam =
+    state.exams.find((item) => item.id === activeExamId) || null
+  const examStudents = useMemo(() => {
+    const roster = new Set(exam ? exam.studentIds : [])
+    return state.students.filter((student) => roster.has(student.id))
+  }, [exam, state.students])
+
   const value = {
     state,
     institution: state.institution,
-    exam: state.exam,
     rooms: state.rooms,
     students: state.students,
-    plan: state.plan,
+    exams: state.exams,
+    activeExamId,
+    exam,
+    examStudents,
+    plans: state.plans,
+    plan: state.plans[activeExamId] || null,
     setInstitution,
-    setExam,
     setRooms,
     setStudents,
+    setActiveExam,
+    updateExam,
+    setExamStudentIds,
+    addExam,
+    duplicateExam,
+    deleteExam,
     setPlan,
     replaceState,
     resetData,
