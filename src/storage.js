@@ -200,7 +200,7 @@ function normalizeRoom(raw, index) {
     building: text(source.building),
     rows,
     cols,
-    seatsPerBench: clamp(toInt(source.seatsPerBench, cols), 1, cols),
+    seatsPerBench: clamp(toInt(text(source.seatsPerBench) || cols, cols), 1, cols),
     // "broken" is the old field name, kept so legacy data migrates cleanly.
     brokenSeats: normalizeBrokenSeats(source.brokenSeats ?? source.broken, rows, cols),
   }

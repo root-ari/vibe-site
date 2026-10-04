@@ -8,6 +8,7 @@ import {
   totalCapacity,
   useData,
 } from './storage'
+import ImportPanel from './ImportPanel.jsx'
 
 // Tab ids double as the i18n key suffix, e.g. "nav.setup".
 const TABS = ['setup', 'plan', 'search']
@@ -218,6 +219,8 @@ function SetupPage() {
           </Field>
         </div>
       </Card>
+
+      <ImportPanel />
 
       <Card title={t('setup.rooms.title')}>
         <ul className="divide-y divide-slate-100 text-sm">
