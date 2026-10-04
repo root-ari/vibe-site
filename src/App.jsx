@@ -11,9 +11,10 @@ import {
 import ImportPanel from './ImportPanel.jsx'
 import PlanPage from './PlanPage.jsx'
 import ExamsPage from './ExamsPage.jsx'
+import PrintPage from './PrintPage.jsx'
 
 // Tab ids double as the i18n key suffix, e.g. "nav.setup".
-const TABS = ['setup', 'exams', 'plan', 'search']
+const TABS = ['setup', 'exams', 'plan', 'search', 'print']
 
 const inputClass =
   'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200'
@@ -333,7 +334,7 @@ function Header({ tab, setTab }) {
   const { institution } = useData()
 
   return (
-    <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
+    <header className="print:hidden sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
           {institution.logo ? (
@@ -409,9 +410,10 @@ function Shell() {
         {tab === 'search' && (
           <Placeholder title={t('page.search.title')} text={t('page.search.text')} />
         )}
+        {tab === 'print' && <PrintPage />}
       </main>
 
-      <footer className="border-t border-slate-200 bg-white">
+      <footer className="print:hidden border-t border-slate-200 bg-white">
         <p className="mx-auto w-full max-w-6xl px-4 py-4 text-center text-xs text-slate-500">
           {t('footer.note')}
         </p>

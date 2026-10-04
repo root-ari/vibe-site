@@ -8,3 +8,74 @@
 body {
   font-family: "Noto Sans", "Noto Sans Bengali", ui-sans-serif, system-ui, sans-serif;
 }
+
+/* On screen the print documents are shown as paper previews. */
+.print-root .print-page {
+  background: #fff;
+  max-width: 210mm;
+  margin: 0 auto 8mm auto;
+  padding: 10mm;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
+}
+
+/* ------------------------- printing ------------------------- */
+
+@page {
+  size: A4 portrait;
+  margin: 12mm;
+}
+
+@media print {
+  html,
+  body {
+    background: #fff;
+  }
+
+  /* Keep the greyed broken seats and the course colours on paper. */
+  .print-root,
+  .print-root * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    font-family: "Noto Sans", "Noto Sans Bengali", ui-sans-serif, system-ui, sans-serif;
+  }
+
+  /* Drop the screen page chrome so the sheet starts at the paper margin. */
+  main {
+    padding: 0;
+    max-width: none;
+  }
+
+  .print-root .print-page {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .print-page {
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .print-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .avoid-break {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Admit cards: 8 per A4 page, two columns of four. */
+  .slip-page {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-auto-rows: 1fr;
+    gap: 4mm;
+  }
+}
