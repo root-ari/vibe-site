@@ -9,6 +9,7 @@ import {
   useData,
 } from './storage'
 import ImportPanel from './ImportPanel.jsx'
+import PlanPage from './PlanPage.jsx'
 
 // Tab ids double as the i18n key suffix, e.g. "nav.setup".
 const TABS = ['setup', 'plan', 'search']
@@ -398,9 +399,7 @@ function Shell() {
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:py-8">
         {tab === 'setup' && <SetupPage />}
-        {tab === 'plan' && (
-          <Placeholder title={t('page.plan.title')} text={t('page.plan.text')} />
-        )}
+        {tab === 'plan' && <PlanPage />}
         {tab === 'search' && (
           <Placeholder title={t('page.search.title')} text={t('page.search.text')} />
         )}
