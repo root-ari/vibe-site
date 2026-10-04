@@ -11,6 +11,7 @@ import {
 import ImportPanel from './ImportPanel.jsx'
 import PlanPage from './PlanPage.jsx'
 import ExamsPage from './ExamsPage.jsx'
+import InvigilatorsPanel from './InvigilatorsPanel.jsx'
 import PrintPage from './PrintPage.jsx'
 
 // Tab ids double as the i18n key suffix, e.g. "nav.setup".
@@ -405,7 +406,14 @@ function Shell() {
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:py-8">
         {tab === 'setup' && <SetupPage />}
-        {tab === 'exams' && <ExamsPage />}
+        {tab === 'exams' && (
+          <>
+            <ExamsPage />
+            <div className="mt-4">
+              <InvigilatorsPanel />
+            </div>
+          </>
+        )}
         {tab === 'plan' && <PlanPage />}
         {tab === 'search' && (
           <Placeholder title={t('page.search.title')} text={t('page.search.text')} />

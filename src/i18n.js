@@ -214,6 +214,41 @@ export const translations = {
     'print.total': 'Total',
     'print.attendanceNote': 'Please sign in the last column on entry.',
     'print.slipsHint': 'Eight admit cards are printed on each A4 page.',
+
+    // Invigilators
+    'invigilators.title': 'Invigilators',
+    'invigilators.name': 'Name',
+    'invigilators.phone': 'Phone',
+    'invigilators.department': 'Department',
+    'invigilators.add': 'Add invigilator',
+    'invigilators.remove': 'Remove',
+    'invigilators.perRoom': 'Invigilators per room',
+    'invigilators.autoAssign': 'Auto-assign',
+    'invigilators.staffed': 'Rooms staffed',
+    'invigilators.short': 'rooms still need an invigilator',
+    'invigilators.busy': 'Already assigned to another room in this slot',
+    'invigilators.none': 'No invigilators yet.',
+
+    // Manual plan editing
+    'edit.title': 'Manual editing',
+    'edit.hint':
+      'Drag a student onto another seat, or click one seat and then another, to swap them.',
+    'edit.lock': 'Lock seat',
+    'edit.unlock': 'Unlock seat',
+    'edit.locked': 'Locked seat',
+    'edit.undo': 'Undo',
+    'edit.redo': 'Redo',
+    'edit.absent': 'Mark absent',
+    'edit.present': 'Mark present again',
+    'edit.special': 'Needs a front seat',
+    'edit.normal': 'No front seat needed',
+    'edit.clearSelection': 'Cancel selection',
+    'edit.selected': 'Selected seat',
+    'edit.lockedNote':
+      'Locked seats keep their student when the plan is regenerated.',
+    'edit.flags': 'Flags',
+    'edit.absentCount': 'Absent',
+    'edit.specialCount': 'Need front seat',
   },
   bn: {
     'app.title': 'পরীক্ষার সিট প্ল্যান',
@@ -417,6 +452,40 @@ export const translations = {
     'print.total': 'মোট',
     'print.attendanceNote': 'উপস্থিতির সময় শেষ কলামে স্বাক্ষর দিন।',
     'print.slipsHint': 'প্রতি A4 পাতায় আটটি অ্যাডমিট কার্ড মুদ্রিত হয়।',
+
+    // Invigilators
+    'invigilators.title': 'পরিদর্শক',
+    'invigilators.name': 'নাম',
+    'invigilators.phone': 'ফোন',
+    'invigilators.department': 'বিভাগ',
+    'invigilators.add': 'পরিদর্শক যোগ করুন',
+    'invigilators.remove': 'সরান',
+    'invigilators.perRoom': 'প্রতি কক্ষে পরিদর্শক',
+    'invigilators.autoAssign': 'স্বয়ংক্রিয় বরাদ্দ',
+    'invigilators.staffed': 'পরিদর্শক নিয়োগিত কক্ষ',
+    'invigilators.short': 'কক্ষে পরিদর্শক প্রয়োজন',
+    'invigilators.busy': 'এই সময়ে অন্য কক্ষে নিয়োগিত',
+    'invigilators.none': 'এখনও কোনো পরিদর্শক যোগ করা হয়নি।',
+
+    // Manual plan editing
+    'edit.title': 'হাতে সম্পাদনা',
+    'edit.hint':
+      'একজন শিক্ষার্থীকে অন্য আসনে টেনে আনুন, অথবা একটি আসনে ক্লিক করে অন্যটিতে ক্লিক করে জায়গা বদলান।',
+    'edit.lock': 'আসন লক করুন',
+    'edit.unlock': 'আসন আনলক করুন',
+    'edit.locked': 'লক করা আসন',
+    'edit.undo': 'পূর্বাবস্থা',
+    'edit.redo': 'পুনরাবস্থা',
+    'edit.absent': 'অনুপস্থিত চিহ্নিত করুন',
+    'edit.present': 'আবার উপস্থিত চিহ্নিত করুন',
+    'edit.special': 'সামনের আসন প্রয়োজন',
+    'edit.normal': 'সামনের আসন লাগবে না',
+    'edit.clearSelection': 'নির্বাচন বাতিল',
+    'edit.selected': 'নির্বাচিত আসন',
+    'edit.lockedNote': 'প্ল্যান পুনরায় তৈরি হলে লক করা আসনের শিক্ষার্থী অপরিবর্তিত থাকে।',
+    'edit.flags': 'চিহ্ন',
+    'edit.absentCount': 'অনুপস্থিত',
+    'edit.specialCount': 'সামনের আসন প্রয়োজন',
   },
 }
 

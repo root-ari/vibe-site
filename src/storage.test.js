@@ -6,10 +6,10 @@ import { SCHEMA_VERSION, createDefaultState, migrate } from './storage.js'
 const student = (id) => ({ id, name: `S${id}`, course: 'CSE221', department: 'CSE', section: 'A' })
 const STUDENTS = ['1', '2', '3'].map(student)
 
-test('the default state is version 2 with two exams and no plans', () => {
+test('the default state is version 3 with two exams and no plans', () => {
   const state = createDefaultState()
   assert.equal(state.version, SCHEMA_VERSION)
-  assert.equal(SCHEMA_VERSION, 2)
+  assert.equal(SCHEMA_VERSION, 3)
   assert.equal(state.exams.length, 2)
   assert.deepEqual(state.plans, {})
   assert.equal(state.activeExamId, state.exams[0].id)
@@ -17,6 +17,58 @@ test('the default state is version 2 with two exams and no plans', () => {
   assert.equal(state.exams[1].studentIds.length, state.students.length)
   // the two sample exams use different, non overlapping slots
   assert.notEqual(state.exams[0].startTime, state.exams[1].startTime)
+  assert.equal(state.invigilators.length, 4)
+  assert.equal(state.exams[0].seating.invigilatorsPerRoom, 1)
+  assert.deepEqual(state.exams[0].seating.lockedSeats, [])
+})
+
+test('v2 exams without a seating block are given safe defaults', () => {
+  const state = migrate({
+    version: 2,
+    students: STUDENTS,
+    exams: [{ id: 'e1', title: 'X', studentIds: ['1', '2'] }],
+    activeExamId: 'e1',
+  })
+  const seating = state.exams[0].seating
+  assert.deepEqual(Object.keys(seating).sort(), [
+    'absentIds',
+    'invigilatorAssignments',
+    'invigilatorsPerRoom',
+    'lockedSeats',
+    'specialNeedsIds',
+  ])
+  assert.equal(seating.invigilatorsPerRoom, 1)
+  assert.deepEqual(state.invigilators, [])
+})
+
+test('seating flags pointing at missing rooms, people or students are pruned', () => {
+  const state = migrate({
+    version: 3,
+    students: STUDENTS,
+    invigilators: [{ id: 'inv-1', name: 'Asha' }],
+    rooms: [{ id: 'r1', name: 'A-101', rows: 2, cols: 2, seatsPerBench: 2, brokenSeats: [] }],
+    exams: [
+      {
+        id: 'e1',
+        title: 'X',
+        studentIds: ['1', '2'],
+        seating: {
+          lockedSeats: ['r1:1,1', 'ghost:9,9'],
+          absentIds: ['1', 'ghost'],
+          specialNeedsIds: ['2', 'ghost2'],
+          invigilatorsPerRoom: 99,
+          invigilatorAssignments: { r1: ['inv-1', 'ghost'], ghost: ['inv-1'] },
+        },
+      },
+    ],
+    activeExamId: 'e1',
+  })
+  const seating = state.exams[0].seating
+  assert.deepEqual(seating.lockedSeats, ['r1:1,1'])
+  assert.deepEqual(seating.absentIds, ['1'])
+  assert.deepEqual(seating.specialNeedsIds, ['2'])
+  assert.equal(seating.invigilatorsPerRoom, 10, 'clamped to the allowed maximum')
+  assert.deepEqual(seating.invigilatorAssignments, { r1: ['inv-1'] })
 })
 
 test('v1 data migrates: one exam, its roster and its plan', () => {
@@ -35,7 +87,7 @@ test('v1 data migrates: one exam, its roster and its plan', () => {
     },
   }
   const state = migrate(v1)
-  assert.equal(state.version, 2)
+  assert.equal(state.version, 3)
   assert.equal(state.exams.length, 1)
   assert.equal(state.exams[0].id, 'exam-1')
   assert.equal(state.exams[0].title, 'Mid')
@@ -56,7 +108,7 @@ test('v0 data with no exam still migrates without throwing', () => {
     students: STUDENTS,
   }
   const state = migrate(v0)
-  assert.equal(state.version, 2)
+  assert.equal(state.version, 3)
   assert.deepEqual(state.exams, [])
   assert.equal(state.activeExamId, '')
   assert.equal(state.students.length, 3)

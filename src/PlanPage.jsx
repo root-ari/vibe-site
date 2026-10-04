@@ -9,6 +9,23 @@ import {
   normalizeOptions,
 } from './seating.js'
 import { conflictingRoomIds } from './exams.js'
+import {
+  canRedo,
+  canUndo,
+  captureLocked,
+  commit,
+  createHistory,
+  isLocked,
+  moveStudent,
+  pinLockedSeats,
+  redo,
+  removeStudent,
+  seatKey,
+  snapshot,
+  toggleIn,
+  toggleLock,
+  undo,
+} from './edits.js'
 
 const COURSE_COLORS = [
   'border-indigo-300 bg-indigo-100 text-indigo-900',
@@ -34,16 +51,40 @@ const TOGGLES = [
 ]
 
 const buttonClass =
-  'rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500'
+  'rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50'
 const primaryClass =
-  'rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500'
+  'rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50'
 const inputClass =
   'rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200'
 
 export default function PlanPage() {
   const { t } = useLang()
-  const { rooms, examStudents, exams, plans, activeExamId, exam, plan, setPlan } =
-    useData()
+  const {
+    rooms,
+    examStudents,
+    exams,
+    plans,
+    activeExamId,
+    exam,
+    plan,
+    seating,
+    setPlan,
+    updateSeating,
+  } = useData()
+
+  const [editMode, setEditMode] = useState(false)
+  const [selectedKey, setSelectedKey] = useState(null)
+  const [dragKey, setDragKey] = useState(null)
+  const [history, setHistory] = useState(() =>
+    createHistory(
+      snapshot({
+        plan,
+        lockedSeats: seating.lockedSeats,
+        absentIds: seating.absentIds,
+        specialNeedsIds: seating.specialNeedsIds,
+      }),
+    ),
+  )
 
   const [options, setOptions] = useState(() => normalizeOptions(DEFAULT_OPTIONS))
   const [result, setResult] = useState(() =>
@@ -92,18 +133,175 @@ export default function PlanPage() {
     return map
   }, [examStudents])
 
+  function currentSnapshot() {
+    return snapshot({
+      plan,
+      lockedSeats: seating.lockedSeats,
+      absentIds: seating.absentIds,
+      specialNeedsIds: seating.specialNeedsIds,
+    })
+  }
+
+  function applySnapshot(value) {
+    if (value.plan) setPlan(value.plan)
+    updateSeating({
+      lockedSeats: value.lockedSeats,
+      absentIds: value.absentIds,
+      specialNeedsIds: value.specialNeedsIds,
+    })
+  }
+
+  function applyEdit(next) {
+    setHistory((current) => commit(current, next))
+    applySnapshot(next)
+  }
+
+  function handleUndo() {
+    const next = undo(history)
+    if (next === history) return
+    setHistory(next)
+    applySnapshot(next.present)
+  }
+
+  function handleRedo() {
+    const next = redo(history)
+    if (next === history) return
+    setHistory(next)
+    applySnapshot(next.present)
+  }
+
+  function studentIdAt(key) {
+    if (!plan) return null
+    const item = plan.assignments.find((a) => seatKey(a) === key)
+    return item ? String(item.studentId) : null
+  }
+
+  function seatAt(key) {
+    const [roomId, position] = String(key).split(':')
+    const [row, col] = position.split(',').map(Number)
+    const room = rooms.find((item) => item.id === roomId)
+    return { roomId, roomName: room ? room.name : roomId, row, col }
+  }
+
+  function keyFor(room, cell) {
+    return seatKey({ roomId: room.roomId, row: cell.row, col: cell.col })
+  }
+
+  function swapTo(targetKey) {
+    if (!plan || !selectedKey || selectedKey === targetKey) return false
+    const nextPlan = moveStudent(plan, seatAt(selectedKey), seatAt(targetKey))
+    applyEdit(snapshot({ ...currentSnapshot(), plan: nextPlan }))
+    setSelectedKey(null)
+    return true
+  }
+
+  function handleSeatClick(room, cell) {
+    if (!editMode || cell.blocked) return
+    const key = keyFor(room, cell)
+    if (selectedKey === key) {
+      setSelectedKey(null)
+      return
+    }
+    if (!selectedKey) {
+      if (cell.studentId) setSelectedKey(key)
+      return
+    }
+    swapTo(key)
+  }
+
+  function handleDrop(room, cell) {
+    if (!editMode || !dragKey || cell.blocked) return
+    const target = keyFor(room, cell)
+    if (dragKey === target) {
+      setDragKey(null)
+      return
+    }
+    const pinnedKey = dragKey
+    setDragKey(null)
+    if (!plan) return
+    applyEdit(
+      snapshot({
+        ...currentSnapshot(),
+        plan: moveStudent(plan, seatAt(pinnedKey), seatAt(target)),
+      }),
+    )
+  }
+
+  function toggleSeatLock(key) {
+    applyEdit(
+      snapshot({
+        ...currentSnapshot(),
+        lockedSeats: toggleLock(seating.lockedSeats, key),
+      }),
+    )
+  }
+
+  // Marking someone absent frees their seat straight away, so the grid and the
+  // flags never disagree.
+  function toggleAbsent(studentId) {
+    const id = String(studentId)
+    const wasAbsent = seating.absentIds.map(String).includes(id)
+    applyEdit(
+      snapshot({
+        ...currentSnapshot(),
+        plan: wasAbsent ? plan : removeStudent(plan, id),
+        absentIds: toggleIn(seating.absentIds, id),
+      }),
+    )
+  }
+
+  function toggleSpecial(studentId) {
+    applyEdit(
+      snapshot({
+        ...currentSnapshot(),
+        specialNeedsIds: toggleIn(seating.specialNeedsIds, String(studentId)),
+      }),
+    )
+  }
+
+  // Regenerating honours the flags: absent students stay out and locked seats
+  // keep whoever is sitting in them.
   function run(next) {
-    const opts = normalizeOptions(next)
+    const opts = normalizeOptions({
+      ...next,
+      excludeStudentIds: seating.absentIds,
+      frontSeatStudentIds: seating.specialNeedsIds,
+    })
+    const pinned = captureLocked(plan, seating.lockedSeats)
     const generated = generatePlan({
       rooms: usableRooms,
       students: examStudents,
       examId: exam ? exam.id : '',
       options: opts,
     })
+    const merged = { ...generated, plan: pinLockedSeats(generated.plan, pinned) }
     setOptions(opts)
-    setResult(generated)
-    setPlan(generated.plan)
+    setResult(merged)
+    setPlan(merged.plan)
+    setSelectedKey(null)
+    setDragKey(null)
+    setHistory(
+      createHistory(
+        snapshot({
+          plan: merged.plan,
+          lockedSeats: seating.lockedSeats,
+          absentIds: seating.absentIds,
+          specialNeedsIds: seating.specialNeedsIds,
+        }),
+      ),
+    )
   }
+
+  const selectedStudentId = selectedKey ? studentIdAt(selectedKey) : null
+  const selectedAbsent = selectedStudentId
+    ? seating.absentIds.map(String).includes(selectedStudentId)
+    : false
+  const selectedSpecial = selectedStudentId
+    ? seating.specialNeedsIds.map(String).includes(selectedStudentId)
+    : false
+  const selectedLocked = selectedKey
+    ? isLocked(seating.lockedSeats, selectedKey)
+    : false
 
   return (
     <div className="space-y-4">
@@ -235,6 +433,91 @@ export default function PlanPage() {
         </p>
       )}
 
+      {result && (
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className={editMode ? primaryClass : buttonClass}
+              onClick={() => {
+                setEditMode((value) => !value)
+                setSelectedKey(null)
+              }}
+            >
+              {t('edit.title')}
+            </button>
+            <button
+              type="button"
+              className={buttonClass}
+              disabled={!canUndo(history)}
+              onClick={handleUndo}
+            >
+              ↶ {t('edit.undo')}
+            </button>
+            <button
+              type="button"
+              className={buttonClass}
+              disabled={!canRedo(history)}
+              onClick={handleRedo}
+            >
+              ↷ {t('edit.redo')}
+            </button>
+            <span className="text-xs text-slate-500">
+              {t('edit.locked')}: {seating.lockedSeats.length} ·{' '}
+              {t('edit.absentCount')}: {seating.absentIds.length} ·{' '}
+              {t('edit.specialCount')}: {seating.specialNeedsIds.length}
+            </span>
+          </div>
+
+          {editMode && (
+            <div className="mt-3 space-y-2 text-xs">
+              <p className="text-slate-600">{t('edit.hint')}</p>
+              <p className="text-slate-500">{t('edit.lockedNote')}</p>
+
+              {selectedKey && (
+                <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-2">
+                  <p className="font-medium text-indigo-900">
+                    {t('edit.selected')}: {selectedKey}
+                  </p>
+                  {selectedStudentId && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        className={buttonClass}
+                        onClick={() => toggleSeatLock(selectedKey)}
+                      >
+                        {selectedLocked ? t('edit.unlock') : t('edit.lock')}
+                      </button>
+                      <button
+                        type="button"
+                        className={buttonClass}
+                        onClick={() => toggleAbsent(selectedStudentId)}
+                      >
+                        {selectedAbsent ? t('edit.present') : t('edit.absent')}
+                      </button>
+                      <button
+                        type="button"
+                        className={buttonClass}
+                        onClick={() => toggleSpecial(selectedStudentId)}
+                      >
+                        {selectedSpecial ? t('edit.normal') : t('edit.special')}
+                      </button>
+                      <button
+                        type="button"
+                        className={buttonClass}
+                        onClick={() => setSelectedKey(null)}
+                      >
+                        {t('edit.clearSelection')}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+
       {result && courses.list.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3">
           <span className="mr-1 text-xs font-medium text-slate-500">
@@ -323,14 +606,57 @@ export default function PlanPage() {
                       const color =
                         courses.map.get(cell.student.course) ||
                         'border-slate-300 bg-slate-50 text-slate-800'
+                      const key = keyFor(room, cell)
+                      const locked = isLocked(seating.lockedSeats, key)
+                      const id = String(cell.student.id)
+                      const absent = seating.absentIds.map(String).includes(id)
+                      const special = seating.specialNeedsIds
+                        .map(String)
+                        .includes(id)
+                      const label = `${cell.student.name} (${cell.student.id}) · ${t('plan.seat')} ${cell.row},${cell.col}`
+                      const body = (
+                        <>
+                          <span className={absent ? 'line-through' : ''}>
+                            {cell.student.name}
+                          </span>
+                          {(locked || absent || special) && (
+                            <span className="mt-0.5 block text-[9px] leading-none">
+                              {locked && <span title={t('edit.locked')}>🔒</span>}
+                              {absent && <span title={t('edit.absent')}>✕</span>}
+                              {special && <span title={t('edit.special')}>★</span>}
+                            </span>
+                          )}
+                        </>
+                      )
+                      const ring =
+                        selectedKey === key ? ' ring-2 ring-indigo-500' : ''
+
+                      if (!editMode) {
+                        return (
+                          <span
+                            key={cell.col}
+                            className={`${base} px-1 text-center text-[10px] leading-tight ${color}${ring}`}
+                            title={label}
+                          >
+                            {body}
+                          </span>
+                        )
+                      }
                       return (
-                        <span
+                        <button
                           key={cell.col}
-                          className={`${base} px-1 text-center text-[10px] leading-tight ${color}`}
-                          title={`${cell.student.name} (${cell.student.id}) · ${t('plan.seat')} ${cell.row},${cell.col}`}
+                          type="button"
+                          draggable
+                          title={label}
+                          onDragStart={() => setDragKey(key)}
+                          onDragEnd={() => setDragKey(null)}
+                          onDragOver={(event) => event.preventDefault()}
+                          onDrop={() => handleDrop(room, cell)}
+                          onClick={() => handleSeatClick(room, cell)}
+                          className={`${base} cursor-grab px-1 text-center text-[10px] leading-tight ${color}${ring}`}
                         >
-                          {cell.student.name}
-                        </span>
+                          {body}
+                        </button>
                       )
                     })}
                   </div>

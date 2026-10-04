@@ -9,6 +9,7 @@ import {
 } from 'react'
 
 import { nextExamId } from './exams.js'
+import { normalizeInvigilator, uniqueInvigilators } from './invigilators.js'
 
 /**
  * Single state module for the exam seat plan app.
@@ -18,7 +19,7 @@ import { nextExamId } from './exams.js'
  * and the React context the UI reads from. No backend: localStorage only.
  */
 
-export const SCHEMA_VERSION = 2
+export const SCHEMA_VERSION = 3
 
 const STATE_KEY = 'seatplan.state'
 const LEGACY_ROOMS_KEY = 'seatplan.rooms'
@@ -91,6 +92,24 @@ export const DEFAULT_EXAM = {
   endTime: '12:00',
 }
 
+export const DEFAULT_INVIGILATORS = [
+  { id: 'inv-1', name: 'Dr. Shirin Akter', phone: '', department: 'CSE' },
+  { id: 'inv-2', name: 'Md. Robiul Islam', phone: '', department: 'MAT' },
+  { id: 'inv-3', name: 'Farhana Kabir', phone: '', department: 'ENG' },
+  { id: 'inv-4', name: 'Jamal Uddin', phone: '', department: 'CSE' },
+]
+
+// Everything the exam office edits by hand about the seating of one exam.
+export function createDefaultSeating() {
+  return {
+    lockedSeats: [],
+    absentIds: [],
+    specialNeedsIds: [],
+    invigilatorsPerRoom: 1,
+    invigilatorAssignments: {},
+  }
+}
+
 export const DEFAULT_EXAMS = [
   {
     id: 'exam-1',
@@ -99,6 +118,7 @@ export const DEFAULT_EXAMS = [
     startTime: '09:00',
     endTime: '12:00',
     studentIds: DEFAULT_STUDENTS.map((student) => student.id),
+    seating: createDefaultSeating(),
   },
   {
     id: 'exam-2',
@@ -107,6 +127,7 @@ export const DEFAULT_EXAMS = [
     startTime: '14:00',
     endTime: '17:00',
     studentIds: DEFAULT_STUDENTS.map((student) => student.id),
+    seating: createDefaultSeating(),
   },
 ]
 
@@ -129,6 +150,7 @@ export function createDefaultState() {
     rooms: clone(DEFAULT_ROOMS),
     students: clone(DEFAULT_STUDENTS),
     exams: clone(DEFAULT_EXAMS),
+    invigilators: clone(DEFAULT_INVIGILATORS),
     plans: {},
     activeExamId: DEFAULT_EXAMS[0].id,
   }
@@ -154,6 +176,12 @@ function text(value) {
   return String(value).trim()
 }
 
+function clampInt(value, min, max, fallback) {
+  const number = Number(value)
+  if (!Number.isFinite(number)) return fallback
+  return Math.min(Math.max(Math.trunc(number), min), max)
+}
+
 function slugify(value) {
   return text(value).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 }
@@ -173,6 +201,40 @@ function normalizeInstitution(raw) {
   }
 }
 
+function normalizeSeating(raw) {
+  const base = createDefaultSeating()
+  const source = raw && typeof raw === 'object' ? raw : {}
+  const list = (value) =>
+    Array.isArray(value)
+      ? Array.from(new Set(value.map(text).filter(Boolean)))
+      : []
+
+  const assignments = {}
+  const rawAssignments =
+    source.invigilatorAssignments &&
+    typeof source.invigilatorAssignments === 'object' &&
+    !Array.isArray(source.invigilatorAssignments)
+      ? source.invigilatorAssignments
+      : {}
+  for (const [roomId, value] of Object.entries(rawAssignments)) {
+    const ids = list(value)
+    if (ids.length > 0) assignments[text(roomId)] = ids
+  }
+
+  return {
+    lockedSeats: list(source.lockedSeats),
+    absentIds: list(source.absentIds),
+    specialNeedsIds: list(source.specialNeedsIds),
+    invigilatorsPerRoom: clampInt(
+      text(source.invigilatorsPerRoom) || base.invigilatorsPerRoom,
+      0,
+      10,
+      base.invigilatorsPerRoom,
+    ),
+    invigilatorAssignments: assignments,
+  }
+}
+
 function normalizeExam(raw) {
   const source = raw && typeof raw === 'object' ? raw : {}
   const studentIds = Array.isArray(source.studentIds)
@@ -185,6 +247,7 @@ function normalizeExam(raw) {
     startTime: text(source.startTime) || DEFAULT_EXAM.startTime,
     endTime: text(source.endTime) || DEFAULT_EXAM.endTime,
     studentIds,
+    seating: normalizeSeating(source.seating),
   }
 }
 
@@ -301,13 +364,35 @@ function normalizeState(raw) {
     .map(normalizeStudent)
     .filter((student) => student.id)
 
+  const invigilators = uniqueInvigilators(
+    (Array.isArray(source.invigilators) ? source.invigilators : []).map(normalizeInvigilator),
+  )
+  const invigilatorIds = new Set(invigilators.map((item) => item.id))
+  const roomIds = new Set(rooms.map((room) => room.id))
+
   const known = new Set(students.map((student) => student.id))
   const exams = withUniqueExamIds(
     (Array.isArray(source.exams) ? source.exams : []).map(normalizeExam),
   )
-  // Drop roster entries for students that are no longer in the catalogue.
+  // Drop roster entries for students that are no longer in the catalogue, and
+  // prune seating flags that point at rooms, people or students that are gone.
   for (const exam of exams) {
     exam.studentIds = exam.studentIds.filter((id) => known.has(id))
+    const roster = new Set(exam.studentIds)
+    exam.seating.absentIds = exam.seating.absentIds.filter((id) => roster.has(id))
+    exam.seating.specialNeedsIds = exam.seating.specialNeedsIds.filter((id) =>
+      roster.has(id),
+    )
+    exam.seating.lockedSeats = exam.seating.lockedSeats.filter((key) =>
+      roomIds.has(String(key).split(':')[0]),
+    )
+    const assignments = {}
+    for (const [roomId, list] of Object.entries(exam.seating.invigilatorAssignments)) {
+      if (!roomIds.has(roomId)) continue
+      const kept = Array.from(new Set(list)).filter((id) => invigilatorIds.has(id))
+      if (kept.length > 0) assignments[roomId] = kept
+    }
+    exam.seating.invigilatorAssignments = assignments
   }
 
   // Plans live in a map keyed by exam id, and only for exams that still exist.
@@ -334,6 +419,7 @@ function normalizeState(raw) {
     rooms,
     students,
     exams,
+    invigilators,
     plans,
     activeExamId,
   }
@@ -634,6 +720,31 @@ export function DataProvider({ children }) {
       }),
     [],
   )
+  const setInvigilators = useCallback(
+    (list) =>
+      setState((current) => ({
+        ...current,
+        invigilators: uniqueInvigilators(
+          (list || []).map(normalizeInvigilator),
+        ),
+      })),
+    [],
+  )
+  const updateSeating = useCallback(
+    (changes) =>
+      setState((current) => ({
+        ...current,
+        exams: current.exams.map((exam) =>
+          exam.id === current.activeExamId
+            ? {
+                ...exam,
+                seating: normalizeSeating({ ...exam.seating, ...changes }),
+              }
+            : exam,
+        ),
+      })),
+    [],
+  )
   const setPlan = useCallback(
     (plan) =>
       setState((current) => {
@@ -668,6 +779,8 @@ export function DataProvider({ children }) {
     activeExamId,
     exam,
     examStudents,
+    invigilators: state.invigilators,
+    seating: exam ? exam.seating : createDefaultSeating(),
     plans: state.plans,
     plan: state.plans[activeExamId] || null,
     setInstitution,
@@ -676,6 +789,8 @@ export function DataProvider({ children }) {
     setActiveExam,
     updateExam,
     setExamStudentIds,
+    setInvigilators,
+    updateSeating,
     addExam,
     duplicateExam,
     deleteExam,

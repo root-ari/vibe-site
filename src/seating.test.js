@@ -382,3 +382,47 @@ test('empty input does not throw', () => {
   assert.equal(result.score.score, 100)
   assert.deepEqual(result.plan.assignments, [])
 })
+
+test('absent students get no seat and are not reported as unseated', () => {
+  const result = generatePlan({
+    rooms: ROOMS,
+    students: STUDENTS,
+    options: { maxRetries: 0, excludeStudentIds: ['241-15-1001', '241-15-1002'] },
+  })
+  const ids = result.plan.assignments.map((a) => a.studentId)
+  assert.equal(ids.includes('241-15-1001'), false)
+  assert.equal(ids.includes('241-15-1002'), false)
+  // they are absent, not unseated: the other 24 students fill all 24 seats
+  assert.equal(result.plan.unseated.length, 0)
+  assert.equal(result.plan.unseated.includes('241-15-1001'), false)
+  assert.equal(result.totals.absent, 2)
+  assert.equal(result.totals.students, 24)
+  assert.equal(result.totals.seated, 24)
+})
+
+test('special-needs students are seated in the front row', () => {
+  const result = generatePlan({
+    rooms: ROOMS,
+    students: STUDENTS,
+    options: { maxRetries: 0, frontSeatStudentIds: ['241-15-1001', '241-16-2001', '241-17-3001'] },
+  })
+  const front = new Set(['241-15-1001', '241-16-2001', '241-17-3001'])
+  for (const item of result.plan.assignments) {
+    if (front.has(item.studentId)) assert.equal(item.row, 1, `${item.studentId} is not in the front row`)
+  }
+})
+
+test('special-needs students beyond the front seats are still seated', () => {
+  const many = ['241-15-1001', '241-15-1002', '241-15-1003', '241-15-1004', '241-15-1005']
+  const result = generatePlan({
+    rooms: ROOMS,
+    students: STUDENTS,
+    options: { maxRetries: 0, frontSeatStudentIds: many },
+  })
+  for (const id of many) {
+    assert.ok(
+      result.plan.assignments.some((a) => a.studentId === id),
+      `${id} should still be seated`,
+    )
+  }
+})

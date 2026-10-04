@@ -19,6 +19,8 @@ export const DEFAULT_OPTIONS = {
   order: 'roll',
   seed: 1,
   maxRetries: 25,
+  excludeStudentIds: [],
+  frontSeatStudentIds: [],
 }
 
 /* ---------------------------- utilities --------------------------- */
@@ -77,7 +79,14 @@ export function normalizeOptions(raw = {}) {
     order: raw.order === 'shuffle' ? 'shuffle' : DEFAULT_OPTIONS.order,
     seed: clampInt(raw.seed, 1, 999999, DEFAULT_OPTIONS.seed),
     maxRetries: clampInt(raw.maxRetries, 0, 200, DEFAULT_OPTIONS.maxRetries),
+    excludeStudentIds: idList(raw.excludeStudentIds),
+    frontSeatStudentIds: idList(raw.frontSeatStudentIds),
   }
+}
+
+function idList(value) {
+  if (!Array.isArray(value)) return []
+  return Array.from(new Set(value.map((item) => String(item)).filter(Boolean)))
 }
 
 export function constraintsUsed(options) {
@@ -265,16 +274,40 @@ export function scoreOf(checks, violationCount) {
   return Math.round(((checks - violationCount) / checks) * 100)
 }
 
+function eligibleStudents(students, options) {
+  const excluded = new Set(options.excludeStudentIds)
+  return students.filter((student) => !excluded.has(String(student.id)))
+}
+
 function runAttempt(rooms, students, options, attempt) {
   const grids = rooms.map((room) => buildRoomGrid(room, options))
   const byId = studentIndex(students)
-  const remaining = orderStudents(students, options, attempt).slice()
+  // Absent students never get a seat and are not reported as unseated.
+  const remaining = orderStudents(eligibleStudents(students, options), options, attempt)
+
+  // Students who need a front seat are placed in row 1 before anyone else.
+  const frontSeat = new Set(options.frontSeatStudentIds)
+  if (frontSeat.size > 0) {
+    for (const grid of grids) {
+      for (let col = 1; col <= grid.cols; col += 1) {
+        const cell = grid.cells[0][col - 1]
+        if (cell.blocked || remaining.length === 0) continue
+        const index = remaining.findIndex((student) =>
+          frontSeat.has(String(student.id)),
+        )
+        if (index < 0) break
+        cell.studentId = String(remaining[index].id)
+        remaining.splice(index, 1)
+      }
+    }
+  }
 
   for (const grid of grids) {
     for (let row = 1; row <= grid.rows; row += 1) {
       for (let col = 1; col <= grid.cols; col += 1) {
         const cell = grid.cells[row - 1][col - 1]
-        if (cell.blocked || remaining.length === 0) continue
+        // skip blocked seats and anything already taken by a front-seat student
+        if (cell.blocked || cell.studentId || remaining.length === 0) continue
 
         // Greedy: take the first student with no conflict, otherwise the one
         // that breaks the fewest rules, so a seat is never left empty.
@@ -345,7 +378,7 @@ function summarizeRooms(grids, byId) {
   })
 }
 
-function shapeOf({ examId, opts, grids, byId, unseated, checks, violations, attempts }) {
+function shapeOf({ examId, opts, grids, byId, eligible, unseated, checks, violations, attempts }) {
   const assignments = toAssignments(grids)
   return {
     plan: {
@@ -365,7 +398,8 @@ function shapeOf({ examId, opts, grids, byId, unseated, checks, violations, atte
       attempts,
     },
     totals: {
-      students: byId.size,
+      students: eligible ? eligible.length : byId.size,
+      absent: opts.excludeStudentIds.length,
       capacity: grids.reduce((sum, grid) => sum + grid.capacity, 0),
       seated: assignments.length,
       unseated: unseated.length,
@@ -398,6 +432,7 @@ export function generatePlan({ rooms = [], students = [], examId = '', options =
     opts,
     grids: best.grids,
     byId,
+    eligible: eligibleStudents(students, opts),
     unseated: best.unseated,
     checks: best.checks,
     violations: best.violations,
@@ -430,6 +465,7 @@ export function hydratePlan(plan, rooms, students, options = {}) {
     opts,
     grids,
     byId,
+    eligible: eligibleStudents(students, opts),
     unseated,
     checks: evaluation.checks,
     violations: evaluation.violations,
