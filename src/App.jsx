@@ -10,6 +10,7 @@ import {
 } from './storage'
 import ImportPanel from './ImportPanel.jsx'
 import PlanPage from './PlanPage.jsx'
+import SearchPage from './SearchPage.jsx'
 import ExamsPage from './ExamsPage.jsx'
 import InvigilatorsPanel from './InvigilatorsPanel.jsx'
 import PrintPage from './PrintPage.jsx'
@@ -41,24 +42,12 @@ function Field({ label, children }) {
 }
 
 function StatCard({ label, value }) {
+  const { n } = useLang()
   return (
     <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
       <div className="text-xs font-medium text-slate-500">{label}</div>
-      <div className="mt-1 text-2xl font-semibold text-slate-900">{value}</div>
+      <div className="mt-1 text-2xl font-semibold text-slate-900">{n(value)}</div>
     </div>
-  )
-}
-
-function Placeholder({ title, text: body }) {
-  const { t } = useLang()
-  return (
-    <section className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 sm:p-10">
-      <span className="inline-block rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
-        {t('page.comingSoon')}
-      </span>
-      <h2 className="mt-4 text-xl font-semibold sm:text-2xl">{title}</h2>
-      <p className="mt-2 max-w-2xl text-sm text-slate-600 sm:text-base">{body}</p>
-    </section>
   )
 }
 
@@ -415,9 +404,7 @@ function Shell() {
           </>
         )}
         {tab === 'plan' && <PlanPage />}
-        {tab === 'search' && (
-          <Placeholder title={t('page.search.title')} text={t('page.search.text')} />
-        )}
+        {tab === 'search' && <SearchPage />}
         {tab === 'print' && <PrintPage />}
       </main>
 

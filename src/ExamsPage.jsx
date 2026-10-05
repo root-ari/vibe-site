@@ -43,7 +43,7 @@ function cursorForDate(date) {
 }
 
 export default function ExamsPage() {
-  const { t, lang } = useLang()
+  const { t, lang, n, d, time } = useLang()
   const {
     exams,
     activeExamId,
@@ -120,8 +120,8 @@ export default function ExamsPage() {
               >
                 {exams.map((item) => (
                   <option key={item.id} value={item.id}>
-                    {item.title}
-                    {item.date ? ` · ${item.date}` : ''}
+                    {item.title || t('app.untitled')}
+                    {item.date ? ` · ${d(item.date)}` : ''}
                   </option>
                 ))}
               </select>
@@ -183,12 +183,13 @@ export default function ExamsPage() {
             <div>
               <dt className="inline font-medium">{t('exams.slot')}: </dt>
               <dd className="inline">
-                {exam.date || t('exams.noDate')} · {exam.startTime}–{exam.endTime}
+                {d(exam.date) || t('exams.noDate')} ·{' '}
+                {time(exam.startTime)}–{time(exam.endTime)}
               </dd>
             </div>
             <div>
               <dt className="inline font-medium">{t('exams.roster')}: </dt>
-              <dd className="inline">{exam.studentIds.length}</dd>
+              <dd className="inline">{n(exam.studentIds.length)}</dd>
             </div>
           </dl>
         )}
@@ -221,7 +222,7 @@ export default function ExamsPage() {
         )}
 
         <h3 className="mt-4 text-sm font-semibold">
-          {t('exams.studentConflicts')} ({clashes.length})
+          {t('exams.studentConflicts')} ({n(clashes.length)})
         </h3>
         {clashes.length === 0 ? (
           <p className="mt-2 text-sm text-slate-600">
@@ -305,7 +306,7 @@ export default function ExamsPage() {
                 }
               >
                 <div className="text-right font-medium">
-                  {Number(cell.date.slice(-2))}
+                  {n(Number(cell.date.slice(-2)))}
                 </div>
                 <div className="mt-0.5 space-y-0.5">
                   {dayExams.map((item) => {
@@ -324,7 +325,7 @@ export default function ExamsPage() {
                             : 'bg-indigo-50 text-indigo-800 hover:bg-indigo-100')
                         }
                       >
-                        {item.title}
+                        {item.title || t('app.untitled')}
                         {flagged && (
                           <span
                             className={

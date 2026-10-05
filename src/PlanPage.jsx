@@ -58,7 +58,7 @@ const inputClass =
   'rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200'
 
 export default function PlanPage() {
-  const { t } = useLang()
+  const { t, n } = useLang()
   const {
     rooms,
     examStudents,
@@ -405,24 +405,24 @@ export default function PlanPage() {
                   (result.score.score === 100 ? 'text-emerald-600' : 'text-amber-600')
                 }
               >
-                {result.score.score}%
+                {n(result.score.score)}%
               </div>
             </div>
             <div className="text-sm text-slate-600">
               <div>
-                {t('plan.score.satisfied')}: {result.score.satisfied} /{' '}
-                {result.score.checks}
+                {t('plan.score.satisfied')}: {n(result.score.satisfied)} /{' '}
+                {n(result.score.checks)}
               </div>
               <div>
-                {t('plan.attempts')}: {result.score.attempts}
+                {t('plan.attempts')}: {n(result.score.attempts)}
               </div>
             </div>
             <div className="text-sm text-slate-600">
               <div>
-                {t('plan.seated')}: {result.totals.seated} / {result.totals.capacity}
+                {t('plan.seated')}: {n(result.totals.seated)} / {n(result.totals.capacity)}
               </div>
               <div>
-                {t('plan.unseated')}: {result.totals.unseated}
+                {t('plan.unseated')}: {n(result.totals.unseated)}
               </div>
             </div>
           </div>
@@ -463,9 +463,9 @@ export default function PlanPage() {
               ↷ {t('edit.redo')}
             </button>
             <span className="text-xs text-slate-500">
-              {t('edit.locked')}: {seating.lockedSeats.length} ·{' '}
-              {t('edit.absentCount')}: {seating.absentIds.length} ·{' '}
-              {t('edit.specialCount')}: {seating.specialNeedsIds.length}
+              {t('edit.locked')}: {n(seating.lockedSeats.length)} ·{' '}
+              {t('edit.absentCount')}: {n(seating.absentIds.length)} ·{' '}
+              {t('edit.specialCount')}: {n(seating.specialNeedsIds.length)}
             </span>
           </div>
 
@@ -477,7 +477,7 @@ export default function PlanPage() {
               {selectedKey && (
                 <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-2">
                   <p className="font-medium text-indigo-900">
-                    {t('edit.selected')}: {selectedKey}
+                    {t('edit.selected')}: {n(selectedKey)}
                   </p>
                   {selectedStudentId && (
                     <div className="mt-2 flex flex-wrap gap-2">
@@ -546,8 +546,8 @@ export default function PlanPage() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-semibold">{room.name}</h3>
               <span className="text-xs text-slate-600">
-                {t('plan.seated')} {room.seated} / {t('plan.capacity')}{' '}
-                {room.capacity} · {t('plan.utilization')} {room.utilization}%
+                {t('plan.seated')} {n(room.seated)} / {t('plan.capacity')}{' '}
+                {n(room.capacity)} · {t('plan.utilization')} {n(room.utilization)}%
               </span>
             </div>
             <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
@@ -573,7 +573,7 @@ export default function PlanPage() {
                           >
                             <span aria-hidden="true">✕</span>
                             <span className="sr-only">
-                              {t('plan.cell.broken')} {cell.row},{cell.col}
+                              {t('plan.cell.broken')} {n(cell.row)},{n(cell.col)}
                             </span>
                           </span>
                         )
@@ -587,7 +587,7 @@ export default function PlanPage() {
                           >
                             <span aria-hidden="true">–</span>
                             <span className="sr-only">
-                              {t('plan.cell.skipped')} {cell.row},{cell.col}
+                              {t('plan.cell.skipped')} {n(cell.row)},{n(cell.col)}
                             </span>
                           </span>
                         )
@@ -599,7 +599,7 @@ export default function PlanPage() {
                             className={`${base} border-slate-200 bg-white text-xs text-slate-400`}
                             title={t('plan.cell.free')}
                           >
-                            {cell.row},{cell.col}
+                            {n(cell.row)},{n(cell.col)}
                           </span>
                         )
                       }
@@ -613,7 +613,7 @@ export default function PlanPage() {
                       const special = seating.specialNeedsIds
                         .map(String)
                         .includes(id)
-                      const label = `${cell.student.name} (${cell.student.id}) · ${t('plan.seat')} ${cell.row},${cell.col}`
+                      const label = `${cell.student.name} (${cell.student.id}) · ${t('plan.seat')} ${n(cell.row)},${n(cell.col)}`
                       const body = (
                         <>
                           <span className={absent ? 'line-through' : ''}>
@@ -669,7 +669,7 @@ export default function PlanPage() {
       {result && (
         <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
           <h3 className="text-sm font-semibold">
-            {t('plan.violations')} ({result.violations.length})
+            {t('plan.violations')} ({n(result.violations.length)})
           </h3>
           {result.violations.length === 0 ? (
             <p className="mt-2 text-sm text-slate-600">{t('plan.noViolations')}</p>
@@ -681,7 +681,7 @@ export default function PlanPage() {
                   className="rounded-md bg-red-50 px-2 py-1 text-red-800"
                 >
                   <span className="font-medium">{item.roomName}</span> ·{' '}
-                  {t('plan.seat')} {item.row},{item.col} ·{' '}
+                  {t('plan.seat')} {n(item.row)},{n(item.col)} ·{' '}
                   {t(RULE_KEYS[item.constraint])}{' '}
                   ({t('plan.direction.' + item.direction)}) · {item.studentName}{' '}
                   {t('plan.arrow')} {item.withStudentName}
@@ -691,7 +691,7 @@ export default function PlanPage() {
           )}
 
           <h3 className="mt-4 text-sm font-semibold">
-            {t('plan.unseated')} ({result.totals.unseated})
+            {t('plan.unseated')} ({n(result.totals.unseated)})
           </h3>
           {result.totals.unseated === 0 ? null : (
             <ul className="mt-2 flex flex-wrap gap-2">

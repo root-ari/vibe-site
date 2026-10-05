@@ -389,30 +389,43 @@ export function validateRooms(records, mapping, options = {}) {
 
 /* --------------------------- reporting ---------------------------- */
 
-export function buildErrorCsv(issues, translateReason) {
-  const header = ['row', 'severity', 'reason', 'field', 'value', 'note']
-  const rows = issues.map((item) => [
-    item.rowNumber,
-    item.severity,
-    translateReason ? translateReason(item.reason) : item.reason,
-    item.field,
-    item.value,
-    item.note,
-  ])
-  return toCsv([header, ...rows])
+// `header` supplies the headings and `translate` turns an issue into
+// [severity, reason], so an exported report reads in the chosen language.
+export const ERROR_CSV_FIELDS = ['row', 'severity', 'reason', 'field', 'value', 'note']
+
+export function buildErrorCsv(issues, header, translate) {
+  const labels = header || ERROR_CSV_FIELDS
+  const rows = issues.map((item) => {
+    const [severity, reason] = translate
+      ? translate(item)
+      : [item.severity, item.reason]
+    return [item.rowNumber, severity, reason, item.field, item.value, item.note]
+  })
+  return toCsv([labels, ...rows])
 }
 
-export function studentTemplateCsv() {
+// Column headings come from the UI so the template is written in the chosen
+// language; the raw keys are only a machine-readable fallback.
+export function studentTemplateCsv(columns) {
+  const head = columns || ['id', 'name', 'course', 'department', 'section']
   return toCsv([
-    ['id', 'name', 'course', 'department', 'section'],
+    head,
     ['241-15-1001', 'Rahim Uddin', 'CSE221', 'CSE', 'A'],
     ['241-15-1002', 'নুসরাত জাহান', 'CSE221', 'CSE', 'A'],
   ])
 }
 
-export function roomTemplateCsv() {
+export function roomTemplateCsv(columns) {
+  const head = columns || [
+    'name',
+    'building',
+    'rows',
+    'cols',
+    'seatsPerBench',
+    'brokenSeats',
+  ]
   return toCsv([
-    ['name', 'building', 'rows', 'cols', 'seatsPerBench', 'brokenSeats'],
+    head,
     ['A-101', 'A', '4', '3', '3', ''],
     ['A-103', 'A', '2', '2', '2', '1,2'],
   ])

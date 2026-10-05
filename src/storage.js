@@ -10,6 +10,7 @@ import {
 
 import { nextExamId } from './exams.js'
 import { normalizeInvigilator, uniqueInvigilators } from './invigilators.js'
+import { storedLang, translations } from './i18n.js'
 
 /**
  * Single state module for the exam seat plan app.
@@ -78,18 +79,14 @@ export const DEFAULT_STUDENTS = STUDENT_ROWS.map(([id, name, course, department]
   section: 'A',
 }))
 
-export const DEFAULT_INSTITUTION = {
-  name: 'Example University',
-  logo: null,
-  language: 'en',
+// Sample names are seeded in whichever language is already selected, so the
+// first screen is never English for a Bangla user.
+function sampleText() {
+  return translations[storedLang()] || translations.en
 }
 
-export const DEFAULT_EXAM = {
-  id: 'exam-1',
-  title: 'Mid Term Examination',
-  date: '',
-  startTime: '09:00',
-  endTime: '12:00',
+export function defaultInstitution() {
+  return { name: sampleText()['sample.institution'], logo: null, language: storedLang() }
 }
 
 export const DEFAULT_INVIGILATORS = [
@@ -110,26 +107,29 @@ export function createDefaultSeating() {
   }
 }
 
-export const DEFAULT_EXAMS = [
-  {
-    id: 'exam-1',
-    title: 'Mid Term Examination',
-    date: '2026-05-12',
-    startTime: '09:00',
-    endTime: '12:00',
-    studentIds: DEFAULT_STUDENTS.map((student) => student.id),
-    seating: createDefaultSeating(),
-  },
-  {
-    id: 'exam-2',
-    title: 'Practical Examination',
-    date: '2026-05-12',
-    startTime: '14:00',
-    endTime: '17:00',
-    studentIds: DEFAULT_STUDENTS.map((student) => student.id),
-    seating: createDefaultSeating(),
-  },
-]
+export function defaultExams() {
+  const text = sampleText()
+  return [
+    {
+      id: 'exam-1',
+      title: text['sample.examMid'],
+      date: '2026-05-12',
+      startTime: '09:00',
+      endTime: '12:00',
+      studentIds: DEFAULT_STUDENTS.map((student) => student.id),
+      seating: createDefaultSeating(),
+    },
+    {
+      id: 'exam-2',
+      title: text['sample.examPractical'],
+      date: '2026-05-12',
+      startTime: '14:00',
+      endTime: '17:00',
+      studentIds: DEFAULT_STUDENTS.map((student) => student.id),
+      seating: createDefaultSeating(),
+    },
+  ]
+}
 
 // A Plan holds no seats of its own - just who sits where, who did not get
 // a seat, the shuffle seed and the constraints that were applied.
@@ -144,15 +144,16 @@ export function createEmptyPlan(examId) {
 }
 
 export function createDefaultState() {
+  const exams = defaultExams()
   return {
     version: SCHEMA_VERSION,
-    institution: clone(DEFAULT_INSTITUTION),
+    institution: defaultInstitution(),
     rooms: clone(DEFAULT_ROOMS),
     students: clone(DEFAULT_STUDENTS),
-    exams: clone(DEFAULT_EXAMS),
+    exams,
     invigilators: clone(DEFAULT_INVIGILATORS),
     plans: {},
-    activeExamId: DEFAULT_EXAMS[0].id,
+    activeExamId: exams[0].id,
   }
 }
 
@@ -195,7 +196,7 @@ function normalizeInstitution(raw) {
       ? source.logo
       : null
   return {
-    name: text(source.name) || DEFAULT_INSTITUTION.name,
+    name: text(source.name),
     logo,
     language: source.language === 'bn' ? 'bn' : 'en',
   }
@@ -235,17 +236,17 @@ function normalizeSeating(raw) {
   }
 }
 
-function normalizeExam(raw) {
+export function normalizeExam(raw, index) {
   const source = raw && typeof raw === 'object' ? raw : {}
   const studentIds = Array.isArray(source.studentIds)
     ? Array.from(new Set(source.studentIds.map(text).filter(Boolean)))
     : []
   return {
-    id: text(source.id) || DEFAULT_EXAM.id,
-    title: text(source.title) || DEFAULT_EXAM.title,
+    id: text(source.id) || `exam-${index + 1}`,
+    title: text(source.title),
     date: text(source.date),
-    startTime: text(source.startTime) || DEFAULT_EXAM.startTime,
-    endTime: text(source.endTime) || DEFAULT_EXAM.endTime,
+    startTime: text(source.startTime),
+    endTime: text(source.endTime),
     studentIds,
     seating: normalizeSeating(source.seating),
   }
@@ -283,7 +284,8 @@ function normalizeRoom(raw, index) {
   const source = raw && typeof raw === 'object' ? raw : {}
   const rows = clamp(toInt(source.rows, 1), 1, 50)
   const cols = clamp(toInt(source.cols, 1), 1, 50)
-  const name = text(source.name) || `Room ${index + 1}`
+  // No invented English name: the UI shows a translated placeholder instead.
+  const name = text(source.name)
   return {
     id: text(source.id) || slugify(name) || `room-${index + 1}`,
     name,

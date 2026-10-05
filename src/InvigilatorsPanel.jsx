@@ -15,7 +15,7 @@ const inputClass =
   'rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200'
 
 export default function InvigilatorsPanel() {
-  const { t } = useLang()
+  const { t, n } = useLang()
   const { invigilators, rooms, seating, setInvigilators, updateSeating } = useData()
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
@@ -131,7 +131,7 @@ return (
               key={item.id}
               className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs"
             >
-              <span className="font-medium">{item.name}</span>
+              <span className="font-medium">{item.name || t('invigilators.unnamed')}</span>
               {item.department && (
                 <span className="text-slate-500">{item.department}</span>
               )}
@@ -174,10 +174,10 @@ return (
         </button>
         <p className="text-sm text-slate-600">
           {t('invigilators.staffed')}{' '}
-          {summary.rooms - summary.shortfalls.length} / {summary.rooms}
+          {n(summary.rooms - summary.shortfalls.length)} / {n(summary.rooms)}
           {summary.shortfalls.length > 0 && (
             <span className="ml-1 text-amber-700">
-              · {t('invigilators.short')} {summary.shortfalls.length}
+              · {t('invigilators.short')} {n(summary.shortfalls.length)}
             </span>
           )}
         </p>
@@ -205,7 +205,7 @@ return (
                       type="button"
                       onClick={() => toggle(room.id, item.id)}
                       disabled={busy}
-                      title={busy ? t('invigilators.busy') : item.name}
+                      title={busy ? t('invigilators.busy') : item.name || t('invigilators.unnamed')}
                       className={
                         'rounded-md border px-2 py-1 text-xs transition ' +
                         (here
@@ -214,7 +214,7 @@ return (
                         (busy ? ' cursor-not-allowed opacity-40' : '')
                       }
                     >
-                      {item.name}
+                      {item.name || t('invigilators.unnamed')}
                     </button>
                   )
                 })

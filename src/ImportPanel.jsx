@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useLang } from './i18n'
 import { useData } from './storage'
 import {
+  ERROR_CSV_FIELDS,
   ROOM_FIELDS,
   STUDENT_FIELDS,
   buildErrorCsv,
@@ -131,9 +132,28 @@ export default function ImportPanel() {
 
   function downloadTemplate() {
     if (mode === 'students') {
-      downloadCsv('students-template.csv', studentTemplateCsv())
+      downloadCsv(
+        'students-template.csv',
+        studentTemplateCsv([
+          'csv.studentId',
+          'csv.name',
+          'csv.course',
+          'csv.department',
+          'csv.section',
+        ].map((key) => t(key))),
+      )
     } else {
-      downloadCsv('rooms-template.csv', roomTemplateCsv())
+      downloadCsv(
+        'rooms-template.csv',
+        roomTemplateCsv([
+          'csv.roomName',
+          'csv.building',
+          'csv.rows',
+          'csv.cols',
+          'csv.seatsPerBench',
+          'csv.brokenSeats',
+        ].map((key) => t(key))),
+      )
     }
   }
 
@@ -327,9 +347,14 @@ export default function ImportPanel() {
                   onClick={() =>
                     downloadCsv(
                       'import-errors.csv',
-                      buildErrorCsv(report.issues, (reason) =>
-                        t('import.reason.' + reason),
-                      ),
+                      buildErrorCsv(
+                      report.issues,
+                      ERROR_CSV_FIELDS.map((field) => t('csv.' + field)),
+                      (item) => [
+                        t('import.severity.' + item.severity),
+                        t('import.reason.' + item.reason),
+                      ],
+                    ),
                     )
                   }
                 >

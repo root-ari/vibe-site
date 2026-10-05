@@ -3,6 +3,7 @@ import { useLang } from './i18n'
 import { useData } from './storage'
 import { downloadCsv } from './parse.js'
 import {
+  PLAN_CSV_LABEL_KEYS,
   SLIPS_PER_PAGE,
   admitCards,
   attendanceRows,
@@ -50,21 +51,23 @@ function useCourses(students) {
 /* ----------------------------- pieces ---------------------------- */
 
 function DocHeader({ institution, exam, subtitle }) {
-  const { t } = useLang()
+  const { t, d, time } = useLang()
   return (
     <header className="border-b-2 border-black pb-2">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-base font-bold">{institution.name}</h1>
+          <h1 className="text-base font-bold">
+            {institution.name || t('app.untitled')}
+          </h1>
           {subtitle && <p className="text-sm font-semibold">{subtitle}</p>}
         </div>
         <div className="text-right text-[10px] leading-tight">
-          <p className="text-sm font-semibold">{exam.title}</p>
+          <p className="text-sm font-semibold">{exam.title || t('app.untitled')}</p>
           <p>
-            {t('print.date')}: {exam.date || '—'}
+            {t('print.date')}: {d(exam.date) || '—'}
           </p>
           <p>
-            {exam.startTime}–{exam.endTime}
+            {time(exam.startTime)}–{time(exam.endTime)}
           </p>
           <p>{exam.id}</p>
         </div>
@@ -87,7 +90,7 @@ function SignatureRows() {
 }
 
 function SeatCell({ cell, tint }) {
-  const { t } = useLang()
+  const { t, n } = useLang()
   const box = 'flex items-center justify-center border text-center align-middle'
 
   if (cell.blockedBy === 'broken') {
@@ -118,7 +121,7 @@ function SeatCell({ cell, tint }) {
         className={`${box} border-slate-300 text-[9px] text-slate-400`}
         style={{ width: '24mm', height: '18mm' }}
       >
-        {cell.row},{cell.col}
+        {n(cell.row)},{n(cell.col)}
       </div>
     )
   }
@@ -134,13 +137,13 @@ function SeatCell({ cell, tint }) {
 }
 
 function GridPage({ room, institution, exam, courses }) {
-  const { t } = useLang()
+  const { t, n } = useLang()
   return (
     <section className="print-page avoid-break">
       <DocHeader
         institution={institution}
         exam={exam}
-        subtitle={`${room.name} · ${room.rows}×${room.cols}`}
+        subtitle={`${room.name || t('app.untitled')} · ${n(room.rows)}×${n(room.cols)}`}
       />
       <div className="mt-3 inline-flex flex-col gap-1">
         {room.cells.map((line) => (
@@ -156,8 +159,8 @@ function GridPage({ room, institution, exam, courses }) {
         ))}
       </div>
       <p className="mt-3 text-[10px]">
-        {t('plan.seated')} {room.seated} / {t('plan.capacity')} {room.capacity} ·{' '}
-        {t('plan.utilization')} {room.utilization}%
+        {t('plan.seated')} {n(room.seated)} / {t('plan.capacity')} {n(room.capacity)} ·{' '}
+        {t('plan.utilization')} {n(room.utilization)}%
       </p>
       <SignatureRows />
     </section>
@@ -179,7 +182,7 @@ function DoorPage({ rows, institution, exam, roomName }) {
             <th className={thClass}>{t('print.roll')}</th>
             <th className={thClass}>{t('print.name')}</th>
             <th className={thClass}>{t('print.course')}</th>
-            <th className={thClass}>{t('print.seat')}</th>
+            <th className={thClass}>{t('plan.seat')}</th>
           </tr>
         </thead>
         <tbody>
@@ -194,7 +197,7 @@ function DoorPage({ rows, institution, exam, roomName }) {
         </tbody>
       </table>
       <p className="mt-2 text-[10px]">
-        {t('print.total')}: {rows.length}
+        {t('print.total')}: {n(rows.length)}
       </p>
       <SignatureRows />
     </section>
@@ -247,7 +250,7 @@ function AttendancePage({ rows, institution, exam }) {
 }
 
 function SlipsPage({ cards, institution, exam }) {
-  const { t } = useLang()
+  const { t, n, d, time } = useLang()
   return (
     <section className="print-page">
       <div className="slip-page">
@@ -256,10 +259,14 @@ function SlipsPage({ cards, institution, exam }) {
             key={card.studentId}
             className="avoid-break border-2 border-black p-1.5 text-[9px] leading-tight"
           >
-            <p className="truncate text-[10px] font-bold">{institution.name}</p>
-            <p className="truncate font-semibold">{exam.title}</p>
+            <p className="truncate text-[10px] font-bold">
+              {institution.name || t('app.untitled')}
+            </p>
+            <p className="truncate font-semibold">
+              {exam.title || t('app.untitled')}
+            </p>
             <p>
-              {exam.date || '—'} · {exam.startTime}–{exam.endTime}
+              {d(exam.date) || '—'} · {time(exam.startTime)}–{time(exam.endTime)}
             </p>
             <div className="mt-1 border-t border-black pt-1">
               <p className="font-bold">{card.name}</p>
@@ -267,7 +274,7 @@ function SlipsPage({ cards, institution, exam }) {
               <p>{card.course}</p>
             </div>
             <p className="mt-1 border-t border-black pt-0.5 font-semibold">
-              {t('print.room')}: {card.roomName} · {t('print.seat')}: {card.seat}
+              {t('print.room')}: {card.roomName || t('app.untitled')} · {t('plan.seat')}: {n(card.seat)}
             </p>
           </div>
         ))}
@@ -316,7 +323,14 @@ export default function PrintPage() {
     if (!view) return
     downloadCsv(
       planCsvFilename(exam),
-      planCsv({ exam, institution, result: view, byId }),
+      planCsv({
+        exam,
+        institution,
+        result: view,
+        byId,
+        header: PLAN_CSV_LABEL_KEYS.map((key) => t(key)),
+        status: { seated: t('csv.seated'), unseated: t('csv.unseated') },
+      }),
     )
   }
 

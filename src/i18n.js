@@ -249,6 +249,70 @@ export const translations = {
     'edit.flags': 'Flags',
     'edit.absentCount': 'Absent',
     'edit.specialCount': 'Need front seat',
+
+    // Fallbacks, exported column headings and crash messages
+    'app.untitled': 'Untitled',
+    'invigilators.unnamed': 'Unnamed',
+    'sample.institution': 'Example University',
+    'sample.examMid': 'Mid Term Examination',
+    'sample.examPractical': 'Practical Examination',
+    'csv.row': 'Row',
+    'csv.severity': 'Severity',
+    'csv.reason': 'Reason',
+    'csv.field': 'Field',
+    'csv.value': 'Value',
+    'csv.note': 'Note',
+    'csv.institution': 'Institution',
+    'csv.examId': 'Exam ID',
+    'csv.examTitle': 'Exam title',
+    'csv.examDate': 'Exam date',
+    'csv.startTime': 'Start time',
+    'csv.endTime': 'End time',
+    'csv.studentId': 'Student ID',
+    'csv.name': 'Name',
+    'csv.course': 'Course',
+    'csv.department': 'Department',
+    'csv.section': 'Section',
+    'csv.room': 'Room',
+    'csv.roomName': 'Room name',
+    'csv.building': 'Building',
+    'csv.rows': 'Rows',
+    'csv.cols': 'Columns',
+    'csv.seatsPerBench': 'Seats per bench',
+    'csv.brokenSeats': 'Broken seats',
+    'csv.status': 'Status',
+    'csv.seated': 'Seated',
+    'csv.unseated': 'Unseated',
+    'import.severity.error': 'Error',
+    'import.severity.warning': 'Warning',
+    'error.title': 'Something went wrong',
+    'error.body':
+      'The app ran into an unexpected problem. Reload the page to try again.',
+    'error.reload': 'Reload',
+    'error.details': 'Technical details',
+
+    // Search
+    'search.title': 'Find a student',
+    'search.placeholder': 'Student ID or part of a name',
+    'search.scope': 'Search in',
+    'search.scope.current': 'Current exam only',
+    'search.scope.all': 'All exams',
+    'search.found': 'students found',
+    'search.noResult': 'No student found',
+    'search.hint': 'Start typing a student ID or a name.',
+    'search.tip.id': 'Search by student ID, for example 241-15-1001.',
+    'search.tip.name':
+      'Part of a name works too, written in Bangla or English.',
+    'search.tip.digits':
+      'Bangla and English digits match each other: ১২৩ finds 123.',
+    'search.tip.spaces': 'Extra spaces are ignored.',
+    'search.noPlan': 'No seat plan has been generated for this exam yet.',
+    'search.unseated': 'Unseated — no seat was assigned.',
+    'search.printSlip': 'Print slip',
+    'search.slipTitle': 'Admit card',
+    'search.id': 'ID',
+    'search.building': 'Building',
+    'search.bench': 'Bench',
   },
   bn: {
     'app.title': 'পরীক্ষার সিট প্ল্যান',
@@ -486,39 +550,195 @@ export const translations = {
     'edit.flags': 'চিহ্ন',
     'edit.absentCount': 'অনুপস্থিত',
     'edit.specialCount': 'সামনের আসন প্রয়োজন',
+
+    // Fallbacks, exported column headings and crash messages
+    'app.untitled': 'শিরোনামহীন',
+    'invigilators.unnamed': 'নামহীন',
+    'sample.institution': 'উদাহরণ বিশ্ববিদ্যালয়',
+    'sample.examMid': 'মধ্যপরীক্ষা',
+    'sample.examPractical': 'ব্যবহারিক পরীক্ষা',
+    'csv.row': 'সারি',
+    'csv.severity': 'তীব্রতা',
+    'csv.reason': 'কারণ',
+    'csv.field': 'ফিল্ড',
+    'csv.value': 'মান',
+    'csv.note': 'নোট',
+    'csv.institution': 'প্রতিষ্ঠান',
+    'csv.examId': 'পরীক্ষা আইডি',
+    'csv.examTitle': 'পরীক্ষার শিরোনাম',
+    'csv.examDate': 'পরীক্ষার তারিখ',
+    'csv.startTime': 'শুরুর সময়',
+    'csv.endTime': 'শেষের সময়',
+    'csv.studentId': 'শিক্ষার্থী আইডি',
+    'csv.name': 'নাম',
+    'csv.course': 'কোর্স',
+    'csv.department': 'বিভাগ',
+    'csv.section': 'শেষ',
+    'csv.room': 'কক্ষ',
+    'csv.roomName': 'কক্ষের নাম',
+    'csv.building': 'ভবন',
+    'csv.rows': 'সারি',
+    'csv.cols': 'কলাম',
+    'csv.seatsPerBench': 'বেঞ্চে আসন',
+    'csv.brokenSeats': 'নষ্ট আসন',
+    'csv.status': 'অবস্থা',
+    'csv.seated': 'বসানো হয়েছে',
+    'csv.unseated': 'বসানো হয়নি',
+    'import.severity.error': 'ত্রুটি',
+    'import.severity.warning': 'সতর্কতা',
+    'error.title': 'কিছু একটা ভুল হয়েছে',
+    'error.body':
+      'অ্যাপটিতে অপ্রত্যাশিত সমস্যা হয়েছে। আবার চেষ্টা করতে পেজটি রিওলোড করুন।',
+    'error.reload': 'রিওলোড',
+    'error.details': 'প্রযুক্তিগত বিবরণ',
+
+    // Search
+    'search.title': 'শিক্ষার্থী খুঁজুন',
+    'search.placeholder': 'আইডি বা নামের অংশ',
+    'search.scope': 'যেখানে খুঁজবেন',
+    'search.scope.current': 'শুধু বর্তমান পরীক্ষা',
+    'search.scope.all': 'সব পরীক্ষা',
+    'search.found': 'জন শিক্ষার্থী পাওয়া গেছে',
+    'search.noResult': 'কোনো শিক্ষার্থী পাওয়া যায়নি',
+    'search.hint': 'শিক্ষার্থীর আইডি বা নাম লিখতে শুরু করুন।',
+    'search.tip.id': 'শিক্ষার্থী আইডি দিয়ে খুঁজুন, যেমন ২৪১-১৫-১০০১।',
+    'search.tip.name': 'নামের যেকোনো অংশ দিয়েও খুঁজা যায়, বাংলা বা ইংরেজি—দুটোতেই।',
+    'search.tip.digits':
+      'বাংলা ও ইংরেজি সংখ্যা একে অপরের সমান ধরা হয়: ১২৩ দিয়ে 123 পাওয়া যাবে।',
+    'search.tip.spaces': 'অতিরিক্ত ফাঁকা জায়গা উপেক্ষা করা হয়।',
+    'search.noPlan': 'এই পরীক্ষার সিট প্ল্যান এখনও তৈরি করা হয়নি।',
+    'search.unseated': 'আসন পাওয়া যায়নি — কোনো আসন বরাদ্দ দেওয়া হয়নি।',
+    'search.printSlip': 'পত্রক মুদ্রণ',
+    'search.slipTitle': 'প্রবেশপত্র',
+    'search.id': 'আইডি',
+    'search.building': 'ভবন',
+    'search.bench': 'বেঞ্চ',
   },
 }
 
-const STORAGE_KEY = 'seatplan.lang'
+const LANG_KEY = 'seatplan.lang'
+
+const LANGS = ['en', 'bn']
+
+const BENGALI_DIGITS = '০১২৩৪৫৬৭৮৯'
+
+export const LOCALES = { en: 'en-US', bn: 'bn-BD' }
 
 const LangContext = createContext(null)
 
-function readSavedLang() {
+function readStored(key, allowed, fallback) {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved === 'en' || saved === 'bn') return saved
+    const saved = localStorage.getItem(key)
+    if (allowed.includes(saved)) return saved
   } catch {
     // ignore storage errors (private mode, disabled storage)
   }
-  return 'en'
+  return fallback
+}
+
+// The language already saved in the browser, used when seeding sample data.
+export function storedLang() {
+  return readStored(LANG_KEY, LANGS, 'en')
+}
+
+/** 123 -> "১২৩" when Bangla digits are on. */
+export function localiseDigits(value, digits) {
+  const text = String(value ?? '')
+  if (digits !== 'beng') return text
+  return text.replace(/[0-9]/g, (digit) => BENGALI_DIGITS[Number(digit)])
+}
+
+/** "2026-05-12" -> "May 12, 2026" / "১২ মে, ২০২৬" */
+export function formatDate(value, lang, digits) {
+  if (!value) return ''
+  const parts = String(value).split('-').map(Number)
+  if (parts.length !== 3 || parts.some((part) => !Number.isFinite(part))) {
+    return localiseDigits(value, digits)
+  }
+  // built from parts, so the day never shifts with the machine time zone
+  const date = new Date(parts[0], parts[1] - 1, parts[2])
+  if (Number.isNaN(date.getTime())) return localiseDigits(value, digits)
+  try {
+    return new Intl.DateTimeFormat(LOCALES[lang] || LOCALES.en, {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      numberingSystem: digits === 'beng' ? 'beng' : 'latn',
+    }).format(date)
+  } catch {
+    return localiseDigits(value, digits)
+  }
+}
+
+/** "09:30" -> "০৯:৩০" when Bangla digits are on. */
+export function formatTime(value, digits) {
+  if (!value) return ''
+  const parts = String(value).split(':').map(Number)
+  if (parts.length < 2 || parts.some((part) => !Number.isFinite(part))) {
+    return localiseDigits(value, digits)
+  }
+  return localiseDigits(
+    `${String(parts[0]).padStart(2, '0')}:${String(parts[1]).padStart(2, '0')}`,
+    digits,
+  )
+}
+
+const warned = new Set()
+
+// t() must never return undefined: fall back to English, then to the key, and
+// warn once per missing key so the console points at the gap.
+function lookup(lang, key) {
+  const table = translations[lang] || translations.en
+  const value = table[key] ?? translations.en[key]
+  if (typeof value !== 'string' || value.trim() === '') {
+    if (!warned.has(key)) {
+      warned.add(key)
+      console.warn(
+        `[i18n] Missing translation for "${key}" (lang: ${lang}); showing the key.`,
+      )
+    }
+    return key
+  }
+  return value
 }
 
 export function LangProvider({ children }) {
-  const [lang, setLang] = useState(readSavedLang)
+  const [lang, setLang] = useState(() => storedLang())
+  // Digits follow the language: Bangla always uses Bangla digits, English Latin.
+  const digits = lang === 'bn' ? 'beng' : 'latn'
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, lang)
+      localStorage.setItem(LANG_KEY, lang)
     } catch {
       // ignore storage errors
     }
     document.documentElement.lang = lang
-  }, [lang])
+    document.documentElement.dataset.digits = digits
+    // the document title follows the chosen language
+    document.title = translations[lang]['app.title']
+  }, [lang, digits])
 
-  const t = (key) => translations[lang][key] ?? translations.en[key] ?? key
+  const t = (key) => lookup(lang, key)
+  // n() renders a number, d() a date and time() a clock time - all in the
+  // currently chosen language and digit system.
+  const n = (value) => localiseDigits(value, digits)
+  const d = (value) => formatDate(value, lang, digits)
+  const time = (value) => formatTime(value, digits)
+
   const toggle = () => setLang((current) => (current === 'en' ? 'bn' : 'en'))
 
-  const value = { lang, setLang, toggle, t }
+  const value = {
+    lang,
+    setLang,
+    toggle,
+    digits,
+    locale: LOCALES[lang],
+    t,
+    n,
+    d,
+    time,
+  }
   return createElement(LangContext.Provider, { value }, children)
 }
 

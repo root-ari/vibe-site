@@ -121,27 +121,52 @@ export function chunk(items, size) {
 
 /* ------------------------------- CSV ----------------------------- */
 
-// Stable machine tokens, deliberately not translated.
-export function planCsv({ exam, institution, result, byId }) {
+// Column order is fixed; the headings themselves are supplied by the UI so the
+// exported file matches the chosen language. PLAN_CSV_FIELDS is the
+// machine-readable fallback, PLAN_CSV_LABEL_KEYS the matching i18n keys.
+export const PLAN_CSV_FIELDS = [
+  'institution',
+  'exam_id',
+  'exam_title',
+  'exam_date',
+  'start_time',
+  'end_time',
+  'student_id',
+  'name',
+  'course',
+  'department',
+  'section',
+  'room',
+  'row',
+  'col',
+  'status',
+]
+
+// Must stay in the same order as PLAN_CSV_FIELDS.
+export const PLAN_CSV_LABEL_KEYS = [
+  'csv.institution',
+  'csv.examId',
+  'csv.examTitle',
+  'csv.examDate',
+  'csv.startTime',
+  'csv.endTime',
+  'csv.studentId',
+  'csv.name',
+  'csv.course',
+  'csv.department',
+  'csv.section',
+  'csv.room',
+  'csv.rows',
+  'csv.cols',
+  'csv.status',
+]
+
+export function planCsv({ exam, institution, result, byId, header, status }) {
   const meta = exam || {}
-  const header = [
-    'institution',
-    'exam_id',
-    'exam_title',
-    'exam_date',
-    'start_time',
-    'end_time',
-    'student_id',
-    'name',
-    'course',
-    'department',
-    'section',
-    'room',
-    'row',
-    'col',
-    'status',
-  ]
-  const rows = attendanceRows(result, byId, [...byId.keys()]).map((row) => [
+  const labels = header || PLAN_CSV_FIELDS
+  const statuses = status || { seated: 'seated', unseated: 'unseated' }
+
+  const values = attendanceRows(result, byId, [...byId.keys()]).map((row) => [
     institution ? institution.name : '',
     meta.id || '',
     meta.title || '',
@@ -156,9 +181,10 @@ export function planCsv({ exam, institution, result, byId }) {
     row.roomName,
     row.row,
     row.col,
-    row.seated ? 'seated' : 'unseated',
+    row.seated ? statuses.seated : statuses.unseated,
   ])
-  return toCsv([header, ...rows])
+
+  return toCsv([labels, ...values])
 }
 
 export function planCsvFilename(exam) {

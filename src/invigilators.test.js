@@ -43,7 +43,8 @@ test('invigilators get sensible ids and names', () => {
   })
   const blank = normalizeInvigilator({}, 2)
   assert.equal(blank.id, 'inv-3')
-  assert.equal(blank.name, 'Invigilator 3')
+  // no invented English name: the UI shows a translated placeholder instead
+  assert.equal(blank.name, '')
 })
 
 test('duplicate invigilator ids are made unique', () => {

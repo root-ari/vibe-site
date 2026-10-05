@@ -10,7 +10,8 @@ export function normalizeInvigilator(raw, index) {
   const name = String(source.name ?? '').trim()
   return {
     id: id || `inv-${index + 1}`,
-    name: name || `Invigilator ${index + 1}`,
+    // left blank on purpose: the UI shows a translated placeholder
+    name,
     phone: String(source.phone ?? '').trim(),
     department: String(source.department ?? '').trim(),
   }
