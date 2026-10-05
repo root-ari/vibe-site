@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Class based dark mode, toggled by the header button. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: "Noto Sans", "Noto Sans Bengali", ui-sans-serif, system-ui, sans-serif;
 }
@@ -7,6 +10,92 @@
 /* Noto Sans covers Latin, Noto Sans Bengali covers Bangla glyphs. */
 body {
   font-family: "Noto Sans", "Noto Sans Bengali", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* --------------------- accessibility baseline --------------------- */
+
+/* One consistent focus ring for anything keyboard reachable. */
+:focus-visible {
+  outline: 2px solid var(--color-indigo-600);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Touch targets stay comfortable on small screens. */
+@media (pointer: coarse) {
+  button,
+  select,
+  input[type='search'],
+  input[type='text'],
+  input[type='number'] {
+    min-height: 2.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* --------------------------- dark mode --------------------------- */
+/*
+ * The UI is built from Tailwind's neutral scale, so the whole palette is
+ * remapped under .dark instead of adding a `dark:` class to every element.
+ * Each rule targets a single utility, so it outranks the base one.
+ */
+.dark body {
+  background-color: var(--color-slate-950);
+  color-scheme: dark;
+}
+
+.dark .bg-white,
+.dark .bg-slate-50,
+.dark .bg-slate-100,
+.dark .bg-slate-200 {
+  background-color: var(--color-slate-900);
+}
+
+.dark .border-slate-100,
+.dark .border-slate-200,
+.dark .border-slate-300,
+.dark .border-slate-400 {
+  border-color: var(--color-slate-700);
+}
+
+.dark .text-slate-900,
+.dark .text-slate-800,
+.dark .text-slate-700,
+.dark .text-slate-950 {
+  color: var(--color-slate-100);
+}
+
+.dark .text-slate-600 {
+  color: var(--color-slate-300);
+}
+
+.dark .text-slate-500 {
+  color: var(--color-slate-400);
+}
+
+.dark .text-slate-400 {
+  color: var(--color-slate-500);
+}
+
+.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--color-slate-800);
+}
+
+/* ------------------------- printing ------------------------- */
+
+@page {
+  size: A4 portrait;
+  margin: 12mm;
 }
 
 /* On screen the print documents are shown as paper previews. */
@@ -18,13 +107,6 @@ body {
   border: 1px solid #cbd5e1;
   border-radius: 6px;
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
-}
-
-/* ------------------------- printing ------------------------- */
-
-@page {
-  size: A4 portrait;
-  margin: 12mm;
 }
 
 @media print {

@@ -11,6 +11,18 @@ import {
 import { nextExamId } from './exams.js'
 import { normalizeInvigilator, uniqueInvigilators } from './invigilators.js'
 import { storedLang, translations } from './i18n.js'
+import {
+  MAX_ASSIGNMENTS,
+  MAX_EXAMS,
+  MAX_ID,
+  MAX_ROOMS,
+  MAX_STUDENTS,
+  MAX_TEXT,
+  cleanText,
+  safeArray,
+  safeJsonParse,
+  safeKey,
+} from './security.js'
 
 /**
  * Single state module for the exam seat plan app.
@@ -20,7 +32,7 @@ import { storedLang, translations } from './i18n.js'
  * and the React context the UI reads from. No backend: localStorage only.
  */
 
-export const SCHEMA_VERSION = 3
+export const SCHEMA_VERSION = 4
 
 const STATE_KEY = 'seatplan.state'
 const LEGACY_ROOMS_KEY = 'seatplan.rooms'
@@ -154,6 +166,8 @@ export function createDefaultState() {
     invigilators: clone(DEFAULT_INVIGILATORS),
     plans: {},
     activeExamId: exams[0].id,
+    // A brand new browser gets the guided setup; existing data does not.
+    onboarded: false,
   }
 }
 
@@ -172,9 +186,20 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max)
 }
 
+// Every value that came from a file or from localStorage passes through here.
+// `text` is the single choke point, so no untrusted string reaches the UI, the
+// print documents or a lookup map without being bounded first.
+//
+// Both helpers take exactly ONE argument on purpose: they are used as
+// `array.map(text)` in several places, and a second parameter would receive the
+// array index and be mistaken for a length limit.
 function text(value) {
-  if (value === null || value === undefined) return ''
-  return String(value).trim()
+  return cleanText(value, MAX_TEXT)
+}
+
+// Identifiers get a tighter cap.
+function id(value) {
+  return cleanText(value, MAX_ID)
 }
 
 function clampInt(value, min, max, fallback) {
@@ -190,9 +215,14 @@ function slugify(value) {
 /* --------------------------- normalization -------------------------- */
 
 function normalizeInstitution(raw) {
-  const source = raw && typeof raw === 'object' ? raw : {}
+  const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
+  // A logo is an inline data URL, so it is capped well below the file limit and
+  // must really be an image before it can reach an <img src>.
   const logo =
-    typeof source.logo === 'string' && source.logo.startsWith('data:image/')
+    typeof source.logo === 'string' &&
+    source.logo.startsWith('data:image/') &&
+    /^data:image\/(png|jpeg|jpg|gif|webp|svg\+xml);base64,[A-Za-z0-9+/=]*$/.test(source.logo) &&
+    source.logo.length <= MAX_LOGO_BYTES * 2
       ? source.logo
       : null
   return {
@@ -218,8 +248,11 @@ function normalizeSeating(raw) {
       ? source.invigilatorAssignments
       : {}
   for (const [roomId, value] of Object.entries(rawAssignments)) {
+    // safeKey drops __proto__/constructor/prototype instead of writing them.
+    const key = safeKey(roomId)
+    if (!key) continue
     const ids = list(value)
-    if (ids.length > 0) assignments[text(roomId)] = ids
+    if (ids.length > 0) assignments[key] = ids
   }
 
   return {
@@ -281,27 +314,31 @@ function normalizeBrokenSeats(raw, rows, cols) {
 }
 
 function normalizeRoom(raw, index) {
-  const source = raw && typeof raw === 'object' ? raw : {}
+  const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
   const rows = clamp(toInt(source.rows, 1), 1, 50)
   const cols = clamp(toInt(source.cols, 1), 1, 50)
   // No invented English name: the UI shows a translated placeholder instead.
   const name = text(source.name)
   return {
-    id: text(source.id) || slugify(name) || `room-${index + 1}`,
+    id: id(source.id) || slugify(name) || `room-${index + 1}`,
     name,
     building: text(source.building),
     rows,
     cols,
     seatsPerBench: clamp(toInt(text(source.seatsPerBench) || cols, cols), 1, cols),
     // "broken" is the old field name, kept so legacy data migrates cleanly.
-    brokenSeats: normalizeBrokenSeats(source.brokenSeats ?? source.broken, rows, cols),
+    brokenSeats: normalizeBrokenSeats(
+      safeArray(source.brokenSeats ?? source.broken, 2500),
+      rows,
+      cols,
+    ),
   }
 }
 
 function normalizeStudent(raw) {
-  const source = raw && typeof raw === 'object' ? raw : {}
+  const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
   return {
-    id: text(source.id),
+    id: id(source.id),
     name: text(source.name),
     course: text(source.course),
     department: text(source.department),
@@ -312,11 +349,11 @@ function normalizeStudent(raw) {
 function normalizePlan(raw, examId) {
   if (!raw || typeof raw !== 'object') return null
   const assignments = Array.isArray(raw.assignments)
-    ? raw.assignments
-        .filter((item) => item && typeof item === 'object')
+    ? safeArray(raw.assignments, MAX_ASSIGNMENTS)
+        .filter((item) => item && typeof item === 'object' && !Array.isArray(item))
         .map((item) => ({
-          studentId: text(item.studentId),
-          roomId: text(item.roomId),
+          studentId: id(item.studentId),
+          roomId: id(item.roomId),
           roomName: text(item.roomName),
           row: toInt(item.row, 0),
           col: toInt(item.col, 0),
@@ -324,15 +361,13 @@ function normalizePlan(raw, examId) {
         .filter((item) => item.studentId)
     : []
   return {
-    examId: text(raw.examId) || text(examId),
+    examId: id(raw.examId) || id(examId),
     assignments,
-    unseated: Array.isArray(raw.unseated)
-      ? raw.unseated.map(text).filter(Boolean)
-      : [],
+    unseated: safeArray(raw.unseated, MAX_STUDENTS).map((value) => id(value)).filter(Boolean),
     seed: Math.max(1, toInt(raw.seed, 1)),
-    constraintsUsed: Array.isArray(raw.constraintsUsed)
-      ? raw.constraintsUsed.map(text).filter(Boolean)
-      : [],
+    constraintsUsed: safeArray(raw.constraintsUsed, 16)
+      .map((value) => text(value))
+      .filter(Boolean),
   }
 }
 
@@ -358,41 +393,46 @@ function withUniqueExamIds(exams) {
 }
 
 function normalizeState(raw) {
-  const source = raw && typeof raw === 'object' ? raw : {}
+  const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
+  // Collection sizes are capped so a crafted file or a bloated localStorage
+  // value cannot exhaust memory on load.
   const rooms = withUniqueIds(
-    (Array.isArray(source.rooms) ? source.rooms : []).map(normalizeRoom),
+    safeArray(source.rooms, MAX_ROOMS).map(normalizeRoom),
   )
-  const students = (Array.isArray(source.students) ? source.students : [])
+  const students = safeArray(source.students, MAX_STUDENTS)
     .map(normalizeStudent)
     .filter((student) => student.id)
 
   const invigilators = uniqueInvigilators(
-    (Array.isArray(source.invigilators) ? source.invigilators : []).map(normalizeInvigilator),
+    safeArray(source.invigilators, MAX_ROOMS).map(normalizeInvigilator),
   )
   const invigilatorIds = new Set(invigilators.map((item) => item.id))
   const roomIds = new Set(rooms.map((room) => room.id))
 
   const known = new Set(students.map((student) => student.id))
   const exams = withUniqueExamIds(
-    (Array.isArray(source.exams) ? source.exams : []).map(normalizeExam),
+    safeArray(source.exams, MAX_EXAMS).map(normalizeExam),
   )
   // Drop roster entries for students that are no longer in the catalogue, and
   // prune seating flags that point at rooms, people or students that are gone.
-  for (const exam of exams) {
-    exam.studentIds = exam.studentIds.filter((id) => known.has(id))
+  for (const [index, exam] of exams.entries()) {
+    // The exam id is used as a key into the plans map.
+    const examKey = safeKey(exam.id) || `exam-${index + 1}`
+    exam.id = examKey
+    exam.studentIds = exam.studentIds.filter((value) => known.has(value))
     const roster = new Set(exam.studentIds)
-    exam.seating.absentIds = exam.seating.absentIds.filter((id) => roster.has(id))
-    exam.seating.specialNeedsIds = exam.seating.specialNeedsIds.filter((id) =>
-      roster.has(id),
+    exam.seating.absentIds = exam.seating.absentIds.filter((value) => roster.has(value))
+    exam.seating.specialNeedsIds = exam.seating.specialNeedsIds.filter((value) =>
+      roster.has(value),
     )
-    exam.seating.lockedSeats = exam.seating.lockedSeats.filter((key) =>
-      roomIds.has(String(key).split(':')[0]),
+    exam.seating.lockedSeats = exam.seating.lockedSeats.filter((value) =>
+      roomIds.has(String(value).split(':')[0]),
     )
     const assignments = {}
     for (const [roomId, list] of Object.entries(exam.seating.invigilatorAssignments)) {
       if (!roomIds.has(roomId)) continue
-      const kept = Array.from(new Set(list)).filter((id) => invigilatorIds.has(id))
-      if (kept.length > 0) assignments[roomId] = kept
+      const kept = Array.from(new Set(list)).filter((value) => invigilatorIds.has(value))
+      if (kept.length > 0) assignments[safeKey(roomId) || roomId] = kept
     }
     exam.seating.invigilatorAssignments = assignments
   }
@@ -404,8 +444,10 @@ function normalizeState(raw) {
       : {}
   const plans = {}
   for (const exam of exams) {
-    const plan = normalizePlan(stored[exam.id], exam.id)
-    if (plan) plans[exam.id] = plan
+    const key = safeKey(exam.id)
+    if (!key) continue
+    const plan = normalizePlan(stored[key], key)
+    if (plan) plans[key] = plan
   }
 
   const wanted = text(source.activeExamId)
@@ -424,6 +466,8 @@ function normalizeState(raw) {
     invigilators,
     plans,
     activeExamId,
+    // Only a fresh install opts in; anything older counts as already set up.
+    onboarded: source.onboarded !== false,
   }
 }
 
@@ -488,10 +532,23 @@ export function migrate(raw) {
 
 /* --------------------------- persistence --------------------------- */
 
+/** Marker returned when a stored value exists but cannot be parsed. */
+const CORRUPT = Symbol('corrupt')
+
+export function isCorrupt(value) {
+  return value === CORRUPT
+}
+
+// localStorage is treated as UNTRUSTED input: it can be edited by hand, left
+// behind by an older build, or corrupted. Parsing goes through safeJsonParse so
+// prototype-polluting keys are dropped before anything touches the state.
 function readJSON(key) {
   try {
     const raw = localStorage.getItem(key)
-    return raw ? JSON.parse(raw) : null
+    if (!raw) return null
+    const parsed = safeJsonParse(raw, undefined)
+    // A sentinel distinguishes "nothing stored" from "stored but unreadable".
+    return parsed === undefined ? CORRUPT : parsed
   } catch {
     return null
   }
@@ -506,24 +563,40 @@ export function saveState(state) {
   }
 }
 
+/**
+ * Reads the saved state, treating localStorage as untrusted.
+ * `recovered` is true when stored data existed but could not be used, so the UI
+ * can show a friendly notice instead of silently resetting.
+ */
 export function loadState() {
+  let recovered = false
   const saved = readJSON(STATE_KEY)
-  if (saved) {
+
+  if (saved === CORRUPT) {
+    // Unparsable JSON: drop it and start clean rather than crashing on every load.
+    recovered = true
     try {
-      return migrate(saved)
+      localStorage.removeItem(STATE_KEY)
     } catch {
-      // unreadable or from a newer build - fall through and reseed
+      // ignore storage errors
+    }
+  } else if (saved) {
+    try {
+      return { state: migrate(saved), recovered }
+    } catch {
+      // Structurally wrong, or written by a newer build. Fall through and reseed.
+      recovered = true
     }
   }
 
   // Pick up data written by the previous (v0) version of the app.
   const legacyRooms = readJSON(LEGACY_ROOMS_KEY)
   const legacyStudents = readJSON(LEGACY_STUDENTS_KEY)
-  if (legacyRooms || legacyStudents) {
+  if (legacyRooms && !isCorrupt(legacyRooms) && legacyStudents && !isCorrupt(legacyStudents)) {
     try {
       const migrated = migrate({ version: 0, rooms: legacyRooms, students: legacyStudents })
       saveState(migrated)
-      return migrated
+      return { state: migrated, recovered }
     } catch {
       // ignore and seed below
     }
@@ -531,7 +604,7 @@ export function loadState() {
 
   const seeded = createDefaultState()
   saveState(seeded)
-  return seeded
+  return { state: seeded, recovered }
 }
 
 /* ----------------------------- backup ------------------------------ */
@@ -560,12 +633,9 @@ export function downloadBackup(state) {
 export async function readBackupFile(file) {
   if (!file) return { ok: false, error: 'read' }
   if (file.size > MAX_BACKUP_BYTES) return { ok: false, error: 'too-large' }
-  let parsed
-  try {
-    parsed = JSON.parse(await file.text())
-  } catch {
-    return { ok: false, error: 'bad-json' }
-  }
+  // safeJsonParse drops __proto__/constructor/prototype at every depth.
+  const parsed = safeJsonParse(await file.text(), undefined)
+  if (parsed === undefined) return { ok: false, error: 'bad-json' }
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
     return { ok: false, error: 'not-object' }
   }
@@ -610,7 +680,13 @@ export function totalCapacity(rooms) {
 const DataContext = createContext(null)
 
 export function DataProvider({ children }) {
-  const [state, setState] = useState(loadState)
+  // loadState returns { state, recovered }: `recovered` flags saved data that
+  // was corrupt, so the UI can explain the reset instead of silently doing it.
+  const [initial] = useState(loadState)
+  const [state, setState] = useState(initial.state)
+  const [recovered, setRecovered] = useState(initial.recovered)
+
+  const dismissRecovery = useCallback(() => setRecovered(false), [])
 
   useEffect(() => {
     saveState(state)
@@ -762,6 +838,16 @@ export function DataProvider({ children }) {
   )
   // Used by "Import backup" to swap the whole model in one go.
   const replaceState = useCallback((next) => setState(normalizeState(next)), [])
+  const setOnboarded = useCallback(
+    (value) =>
+      setState((current) => ({ ...current, onboarded: Boolean(value) })),
+    [],
+  )
+  // Demo data skips the wizard and leaves the app ready to use.
+  const loadDemoData = useCallback(
+    () => setState({ ...createDefaultState(), onboarded: true }),
+    [],
+  )
   const resetData = useCallback(() => setState(createDefaultState()), [])
 
   const activeExamId = state.activeExamId
@@ -798,7 +884,12 @@ export function DataProvider({ children }) {
     deleteExam,
     setPlan,
     replaceState,
+    setOnboarded,
+    loadDemoData,
     resetData,
+    onboarded: state.onboarded,
+    recovered,
+    dismissRecovery,
   }
 
   return createElement(DataContext.Provider, { value }, children)

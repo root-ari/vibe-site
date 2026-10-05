@@ -376,6 +376,35 @@ test('scoreOf handles the zero-check case', () => {
   assert.equal(scoreOf(10, 5), 50)
 })
 
+test('5000 students are planned fast enough to keep the page responsive', () => {
+  const students = Array.from({ length: 5000 }, (_, i) => ({
+    id: `S${100000 + i}`,
+    name: `Student ${i}`,
+    course: `C${i % 12}`,
+    department: `D${i % 5}`,
+  }))
+  // 84 rooms of 72 seats leaves enough capacity for the whole cohort.
+  const rooms = Array.from({ length: 84 }, (_, k) => ({
+    id: `room-${k}`,
+    name: `R-${k}`,
+    building: 'A',
+    rows: 12,
+    cols: 6,
+    seatsPerBench: 2,
+    brokenSeats: [],
+  }))
+
+  const started = process.hrtime.bigint()
+  const result = generatePlan({ rooms, students, examId: 'E1', options: normalizeOptions({}) })
+  const ms = Number(process.hrtime.bigint() - started) / 1e6
+
+  // Everyone is seated and the whole run must stay well inside one frame budget
+  // times a few, otherwise the Generate button would visibly freeze the tab.
+  assert.equal(result.totals.seated, 5000)
+  assert.equal(result.totals.unseated, 0)
+  assert.ok(ms < 2000, `planning 5000 students took ${ms.toFixed(0)}ms`)
+})
+
 test('empty input does not throw', () => {
   const result = generatePlan({ rooms: [], students: [] })
   assert.equal(result.totals.seated, 0)

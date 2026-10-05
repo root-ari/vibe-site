@@ -11,6 +11,7 @@ import {
 import ImportPanel from './ImportPanel.jsx'
 import PlanPage from './PlanPage.jsx'
 import SearchPage from './SearchPage.jsx'
+import SetupWizard from './SetupWizard.jsx'
 import ExamsPage from './ExamsPage.jsx'
 import InvigilatorsPanel from './InvigilatorsPanel.jsx'
 import PrintPage from './PrintPage.jsx'
@@ -63,9 +64,11 @@ function SetupPage() {
     setInstitution,
     updateExam,
     replaceState,
+    loadDemoData,
     resetData,
   } = useData()
   const [confirmingReset, setConfirmingReset] = useState(false)
+  const [confirmingDemo, setConfirmingDemo] = useState(false)
   const [notice, setNotice] = useState(null)
   const logoInput = useRef(null)
   const importInput = useRef(null)
@@ -271,11 +274,45 @@ function SetupPage() {
           <button
             type="button"
             className={buttonClass}
+            onClick={() => setConfirmingDemo(true)}
+            title={t('demo.body')}
+          >
+            ✨ {t('demo.load')}
+          </button>
+          <button
+            type="button"
+            className={buttonClass}
             onClick={() => setConfirmingReset(true)}
           >
             ↺ {t('reset.button')}
           </button>
         </div>
+
+        {confirmingDemo && (
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
+            <p className="text-sm text-amber-900">{t('demo.body')}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  loadDemoData()
+                  setConfirmingDemo(false)
+                  setNotice({ type: 'ok', text: t('demo.load') })
+                }}
+                className="rounded-lg bg-amber-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-amber-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+              >
+                {t('reset.confirmYes')}
+              </button>
+              <button
+                type="button"
+                className={buttonClass}
+                onClick={() => setConfirmingDemo(false)}
+              >
+                {t('reset.confirmNo')}
+              </button>
+            </div>
+          </div>
+        )}
 
         {confirmingReset && (
           <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
@@ -320,7 +357,7 @@ function SetupPage() {
 }
 
 function Header({ tab, setTab }) {
-  const { t, toggle } = useLang()
+  const { t, toggle, theme, toggleTheme } = useLang()
   const { institution } = useData()
 
   return (
@@ -348,6 +385,16 @@ function Header({ tab, setTab }) {
           </div>
         </div>
 
+        <button
+          type="button"
+          onClick={toggleTheme}
+          aria-pressed={theme === 'dark'}
+          aria-label={t('theme.toggle')}
+          title={t('theme.toggle')}
+          className="shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+        >
+          {theme === 'dark' ? '☀' : '☾'}
+        </button>
         <button
           type="button"
           onClick={toggle}
@@ -387,11 +434,45 @@ function Header({ tab, setTab }) {
 
 function Shell() {
   const { t } = useLang()
+  const { onboarded, recovered, dismissRecovery } = useData()
   const [tab, setTab] = useState('setup')
+
+  // First run in this browser: guide the exam office through setup first.
+  if (!onboarded) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4 text-slate-900">
+        <SetupWizard />
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900">
       <Header tab={tab} setTab={setTab} />
+
+      {/* Saved data was unreadable: say so instead of silently resetting. */}
+      {recovered && (
+        <div
+          role="alert"
+          className="print:hidden border-b border-amber-200 bg-amber-50 px-4 py-3"
+        >
+          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-amber-900">
+                {t('state.corrupt.title')}
+              </p>
+              <p className="text-sm text-amber-800">{t('state.corrupt.body')}</p>
+            </div>
+            <button
+              type="button"
+              onClick={dismissRecovery}
+              className="shrink-0 rounded-lg bg-amber-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-amber-700"
+            >
+              {t('state.corrupt.dismiss')}
+            </button>
+          </div>
+        </div>
+      )}
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:py-8">
         {tab === 'setup' && <SetupPage />}
@@ -409,9 +490,15 @@ function Shell() {
       </main>
 
       <footer className="print:hidden border-t border-slate-200 bg-white">
-        <p className="mx-auto w-full max-w-6xl px-4 py-4 text-center text-xs text-slate-500">
-          {t('footer.note')}
-        </p>
+        <div className="mx-auto w-full max-w-6xl space-y-1 px-4 py-4 text-center">
+          <p className="text-xs font-medium text-slate-600">
+            {t('privacy.title')}
+          </p>
+          <p className="mx-auto max-w-2xl text-xs text-slate-500">
+            {t('privacy.body')}
+          </p>
+          <p className="text-xs text-slate-500">{t('footer.note')}</p>
+        </div>
       </footer>
     </div>
   )

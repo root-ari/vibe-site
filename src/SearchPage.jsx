@@ -24,12 +24,20 @@ function SeatMap({ room, plan, assignment }) {
   return (
     <div>
       <p className="mb-1 text-xs font-medium text-slate-500">{t('plan.seat')}</p>
-      <div className="inline-flex flex-col gap-1 rounded-lg border border-slate-200 bg-slate-50 p-2">
+      <div
+        role="grid"
+        aria-label={t('plan.seat')}
+        className="inline-flex flex-col gap-1 rounded-lg border border-slate-200 bg-slate-50 p-2"
+      >
         {grid.cells.map((line) => (
-          <div key={line[0].row} className="flex gap-1">
+          <div key={line[0].row} role="row" className="flex gap-1">
             {line.map((cell) => (
               <div
                 key={cell.col}
+                role="gridcell"
+                // Row/column read out so the map is usable without sight of the grid.
+                aria-label={`${n(cell.row)},${n(cell.col)}`}
+                aria-current={cell.here ? 'true' : undefined}
                 title={`${n(cell.row)},${n(cell.col)}`}
                 className={
                   'grid h-6 w-6 place-items-center rounded text-[9px] ' +
@@ -80,10 +88,11 @@ function Slip({ card, student, institution }) {
       <div className="mt-2 border-t border-black pt-1">
         {assignment ? (
           <p className="font-semibold">
-            {t('print.room')}: {room ? room.name : card.assignment.roomName}
+            {t('print.room')}: {room ? room.name : assignment.roomName}
             {room && room.building ? ` (${t('search.building')}: ${room.building})` : ''} ·{' '}
-            {t('plan.seat')}: {n(assignment.row)},{n(assignment.col)} ·{' '}
-            {t('search.bench')} {n(benchOf(room, assignment.col))}
+            {t('plan.seat')}: {n(assignment.row)},{n(assignment.col)}
+            {/* benchOf needs a real room, which is missing after a room is deleted */}
+            {room ? ` · ${t('search.bench')} ${n(benchOf(room, assignment.col))}` : ''}
           </p>
         ) : (
           <p className="font-semibold">{t('search.unseated')}</p>
@@ -260,8 +269,11 @@ export default function SearchPage() {
                           ? ` · ${t('search.building')}: ${card.room.building}`
                           : ''}{' '}
                         · {t('plan.seat')}: {n(card.assignment.row)},
-                        {n(card.assignment.col)} · {t('search.bench')}{' '}
-                        {n(benchOf(card.room, card.assignment.col))}
+                        {n(card.assignment.col)}
+                        {/* guard: the room can be deleted while the plan keeps its seat */}
+                        {card.room
+                          ? ` · ${t('search.bench')} ${n(benchOf(card.room, card.assignment.col))}`
+                          : ''}
                       </p>
                     ) : (
                       <p className="mt-1 font-medium text-amber-700">

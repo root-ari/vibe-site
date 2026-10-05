@@ -313,6 +313,43 @@ export const translations = {
     'search.id': 'ID',
     'search.building': 'Building',
     'search.bench': 'Bench',
+
+    // Theme, demo data, first-run wizard and generic states
+    'theme.toggle': 'Dark mode',
+    'demo.title': 'Demo data',
+    'demo.load': 'Load demo data',
+    'demo.body':
+      'Replaces everything with 3 rooms and 26 students so you can try the app.',
+    'wizard.title': 'Welcome',
+    'wizard.step': 'Step',
+    'wizard.institution': 'Tell us about your institution',
+    'wizard.institutionBody': 'This name appears on every printed sheet.',
+    'wizard.rooms': 'Add your rooms',
+    'wizard.roomsBody':
+      'Import a rooms file, or load the demo data to look around.',
+    'wizard.students': 'Add your students',
+    'wizard.studentsBody':
+      'Import a student list, or load the demo data to look around.',
+    'wizard.generate': 'Generate the seat plan',
+    'wizard.generateBody':
+      'Students are seated automatically, keeping same-course students apart.',
+    'wizard.back': 'Back',
+    'wizard.next': 'Next',
+    'wizard.finish': 'Finish',
+    'wizard.skip': 'Skip for now',
+    'wizard.saved':
+      'Setup complete. Generate a seat plan to see the rooms.',
+    'state.loading': 'Working…',
+    'state.noRooms': 'No rooms yet.',
+    'state.noStudents': 'No students yet.',
+    'state.error': 'Something went wrong. Please try again.',
+    'state.corrupt.title': 'Saved data could not be read',
+    'state.corrupt.body':
+      'The data stored in this browser was damaged, so the app started again with sample data. Import a backup if you have one.',
+    'state.corrupt.dismiss': 'OK',
+    'privacy.title': 'Your data stays in this browser',
+    'privacy.body':
+      'Everything is saved in this browser only. Nothing is uploaded, there is no server and no account. Clearing site data or using a private window erases it.',
   },
   bn: {
     'app.title': 'পরীক্ষার সিট প্ল্যান',
@@ -613,12 +650,49 @@ export const translations = {
     'search.id': 'আইডি',
     'search.building': 'ভবন',
     'search.bench': 'বেঞ্চ',
+
+    // Theme, demo data, first-run wizard and generic states
+    'theme.toggle': 'ডার্ক মোড',
+    'demo.title': 'ডেমো ডেটা',
+    'demo.load': 'ডেমো ডেটা লোড করুন',
+    'demo.body':
+      'অ্যাপটি দেখার জন্য ৩টি কক্ষ ও ২৬ জন শিক্ষার্থী দিয়ে সবকিছু প্রতিস্থাপন করে।',
+    'wizard.title': 'স্বাগতম',
+    'wizard.step': 'ধাপ',
+    'wizard.institution': 'প্রতিষ্ঠান সম্পর্কে জানান',
+    'wizard.institutionBody': 'এই নামটি মুদ্রিত প্রতিটি পত্রে থাকবে।',
+    'wizard.rooms': 'কক্ষ যোগ করুন',
+    'wizard.roomsBody': 'কক্ষের ফাইল ইমপোর্ট করুন, অথবা ডেমো ডেটা লোড করুন।',
+    'wizard.students': 'শিক্ষার্থী যোগ করুন',
+    'wizard.studentsBody':
+      'শিক্ষার্থীর তালিকা ইমপোর্ট করুন, অথবা ডেমো ডেটা লোড করুন।',
+    'wizard.generate': 'সিট প্ল্যান তৈরি করুন',
+    'wizard.generateBody':
+      'একই কোর্সের শিক্ষার্থীদের আলাদা রেখে স্বয়ংক্রিয়ভাবে আসন বরাদ্দ করা হবে।',
+    'wizard.back': 'পেছনে',
+    'wizard.next': 'পরবর্তী',
+    'wizard.finish': 'শেষ',
+    'wizard.skip': 'এখনই এড়িয়ে যান',
+    'wizard.saved': 'সেটআপ সম্পন্ন। কক্ষ দেখতে সিট প্ল্যান তৈরি করুন।',
+    'state.loading': 'কাজ চলছে…',
+    'state.noRooms': 'এখনও কোনো কক্ষ নেই।',
+    'state.noStudents': 'এখনও কোনো শিক্ষার্থী নেই।',
+    'state.error': 'কিছু একটা ভুল হয়েছে। আবার চেষ্টা করুন।',
+    'state.corrupt.title': 'সংরক্ষিত ডেটা পড়া যায়নি',
+    'state.corrupt.body':
+      'এই ব্রাউজারে সংরক্ষিত ডেটা ক্ষতিগ্রস্ত ছিল, তাই অ্যাপটি নমুনা ডেটা দিয়ে নতুন করে শুরু করেছে। ব্যাকআপ থাকলে ইমপোর্ট করুন।',
+    'state.corrupt.dismiss': 'ঠিক আছে',
+    'privacy.title': 'আপনার ডেটা এই ব্রাউজারেই থাকে',
+    'privacy.body':
+      'সবকিছু শুধু এই ব্রাউজারে সংরক্ষিত হয়। কোনো কিছু আপলোড হয় না, কোনো সার্ভার বা অ্যাকাউন্ট নেই। সাইট ডেটা মুছলে বা প্রাইভেট উইন্ডোতে সব মুছে যাবে।',
   },
 }
 
 const LANG_KEY = 'seatplan.lang'
+const THEME_KEY = 'seatplan.theme'
 
 const LANGS = ['en', 'bn']
+const THEMES = ['light', 'dark']
 
 const BENGALI_DIGITS = '০১২৩৪৫৬৭৮৯'
 
@@ -706,6 +780,7 @@ export function LangProvider({ children }) {
   const [lang, setLang] = useState(() => storedLang())
   // Digits follow the language: Bangla always uses Bangla digits, English Latin.
   const digits = lang === 'bn' ? 'beng' : 'latn'
+  const [theme, setTheme] = useState(() => readStored(THEME_KEY, THEMES, 'light'))
 
   useEffect(() => {
     try {
@@ -719,6 +794,15 @@ export function LangProvider({ children }) {
     document.title = translations[lang]['app.title']
   }, [lang, digits])
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(THEME_KEY, theme)
+    } catch {
+      // ignore storage errors
+    }
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+  }, [theme])
+
   const t = (key) => lookup(lang, key)
   // n() renders a number, d() a date and time() a clock time - all in the
   // currently chosen language and digit system.
@@ -727,12 +811,16 @@ export function LangProvider({ children }) {
   const time = (value) => formatTime(value, digits)
 
   const toggle = () => setLang((current) => (current === 'en' ? 'bn' : 'en'))
+  const toggleTheme = () =>
+    setTheme((current) => (current === 'dark' ? 'light' : 'dark'))
 
   const value = {
     lang,
     setLang,
     toggle,
     digits,
+    theme,
+    toggleTheme,
     locale: LOCALES[lang],
     t,
     n,

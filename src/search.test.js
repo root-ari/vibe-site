@@ -143,3 +143,39 @@ test('the seat map marks exactly the student seat', () => {
   assert.equal(here[0].col, 1)
   assert.equal(seatMap({ room: null }), null)
 })
+
+/* ------------------------- checklist coverage ------------------------- */
+
+// "Search by ID" and "search by Bangla name" are two different code paths.
+test('search by ID finds the student from Latin or Bangla digits', () => {
+  const latin = searchStudents(STUDENTS, '241-15-1001')
+  const bangla = searchStudents(STUDENTS, '২৪১-১৫-১০০১')
+  assert.equal(latin[0].id, '241-15-1001')
+  assert.equal(bangla[0].id, '241-15-1001')
+})
+
+test('search by a Bangla name ignores case and stray spacing', () => {
+  const [hit] = searchStudents(STUDENTS, '  নুসরাত   জাহান ')
+  assert.equal(hit.id, '241-16-2001')
+})
+
+// A room can be deleted after a plan was generated, so a card can hold an
+// assignment whose room is gone. Search must degrade, not throw.
+test('an assignment whose room was deleted still returns a card', () => {
+  const plans = {
+    e1: {
+      assignments: [{ studentId: 'S1', roomId: 'gone', roomName: 'Old Room', row: 1, col: 1 }],
+      unseated: [],
+    },
+  }
+  const [card] = buildResults({
+    studentId: 'S1',
+    exams: [EXAMS[1]],
+    plans,
+    rooms: [ROOM],
+  })
+  assert.equal(card.status, 'seated')
+  assert.equal(card.room, null)
+  // benchOf is only safe with a real room, which is what the page now guards.
+  assert.equal(benchOf(card.room, card.assignment.col), null)
+})

@@ -4,8 +4,22 @@
 // which is lazily loaded from a CDN and only when a spreadsheet is chosen,
 // so CSV importing keeps working with no network.
 
-const SHEETJS_URL =
-  'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js'
+// XLSX is pinned to an exact version and verified with Subresource Integrity, so
+// a compromised or swapped CDN file cannot execute in this app. `crossOrigin`
+// is required for the browser to check the hash at all.
+import {
+  MAX_ID,
+  MAX_IMPORT_ROWS,
+  MAX_TEXT,
+  cleanText,
+  isForbiddenKey,
+  safeJsonParse,
+} from './security.js'
+
+const SHEETJS = {
+  url: 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js',
+  integrity: 'sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT',
+}
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024
 const BOM = '\uFEFF'
@@ -65,8 +79,19 @@ export function parseCsv(input) {
   return rows
 }
 
-function csvCell(value) {
+// Spreadsheet apps treat a leading =, +, - or @ as a formula. Prefixing with a
+// single quote forces the cell to be read as literal text, so an imported or
+// user-typed name like `=cmd|...` cannot become a live formula when the export
+// is opened in Excel, LibreOffice or Google Sheets.
+export function escapeCsvValue(value) {
   const str = value === null || value === undefined ? '' : String(value)
+  // Tab and CR are also formula triggers in some spreadsheet versions.
+  if (/^[=+\-@\t\r]/.test(str)) return `'${str}`
+  return str
+}
+
+function csvCell(value) {
+  const str = escapeCsvValue(value)
   return /[",\r\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str
 }
 
@@ -97,10 +122,15 @@ function loadSheetJs() {
   if (sheetJsPromise) return sheetJsPromise
   sheetJsPromise = new Promise((resolve, reject) => {
     const script = document.createElement('script')
-    script.src = SHEETJS_URL
+    script.src = SHEETJS.url
+    script.integrity = SHEETJS.integrity
+    script.crossOrigin = 'anonymous'
+    script.referrerPolicy = 'no-referrer'
     script.async = true
     script.onload = () =>
       window.XLSX ? resolve(window.XLSX) : reject(new Error('no-xlsx'))
+    // A failed integrity check fires an error event, so this covers both
+    // "CDN unreachable" and "CDN served something else".
     script.onerror = () => reject(new Error('network'))
     document.head.appendChild(script)
   }).catch((error) => {
@@ -108,6 +138,12 @@ function loadSheetJs() {
     throw error
   })
   return sheetJsPromise
+}
+
+// The import is the only place a file is read, so the size and shape limits live
+// here. A hostile spreadsheet could otherwise expand into millions of rows.
+function capRows(rows) {
+  return rows.length > MAX_IMPORT_ROWS ? rows.slice(0, MAX_IMPORT_ROWS) : rows
 }
 
 export async function readImportFile(file) {
@@ -132,7 +168,7 @@ export async function readImportFile(file) {
         raw: false,
         blankrows: true,
       })
-      return { ok: true, rows, source: file.name }
+      return { ok: true, rows: capRows(rows), source: file.name }
     } catch {
       return { ok: false, error: 'import.error.read' }
     }
@@ -140,7 +176,7 @@ export async function readImportFile(file) {
 
   const text = stripBom(await file.text())
   if (looksMojibake(text)) return { ok: false, error: 'import.error.encoding' }
-  return { ok: true, rows: parseCsv(text), source: file.name }
+  return { ok: true, rows: capRows(parseCsv(text)), source: file.name }
 }
 
 /* --------------------------- table shape -------------------------- */
@@ -226,8 +262,22 @@ export function guessMapping(headers, fields) {
 
 /* --------------------------- validation --------------------------- */
 
-function valueAt(record, index) {
-  return index >= 0 && index < record.values.length ? record.values[index] : ''
+// Every imported cell is treated as untrusted. `cell` returns the cleaned value
+// used for storage; `tooLong` inspects the RAW value so an over-long field is
+// rejected outright rather than silently truncated into a different student.
+function cell(record, index) {
+  if (index < 0 || index >= record.values.length) return ''
+  return cleanText(record.values[index])
+}
+
+function rawCell(record, index) {
+  if (index < 0 || index >= record.values.length) return ''
+  const value = record.values[index]
+  return value === null || value === undefined ? '' : String(value)
+}
+
+function tooLong(record, index, max) {
+  return rawCell(record, index).trim().length > max
 }
 
 function issue(rowNumber, severity, reason, field, value, note = '') {
@@ -244,10 +294,32 @@ export function validateStudents(records, mapping, options = {}) {
   const seen = new Map()
 
   for (const record of records) {
-    const get = (key) => valueAt(record, mapping[key])
+    const get = (key) => cell(record, mapping[key])
 
     if (record.isBlank) {
       issues.push(issue(record.rowNumber, 'error', 'blank', '', ''))
+      continue
+    }
+
+    // Reject over-long fields on the raw value, before any truncation, so a
+    // 10,000-character name cannot be silently cut into a plausible student.
+    const overLong = [
+      ['id', MAX_ID],
+      ['name', MAX_TEXT],
+      ['course', MAX_TEXT],
+    ].find(([field, max]) => tooLong(record, mapping[field], max))
+    if (overLong) {
+      const [field, max] = overLong
+      issues.push(
+        issue(
+          record.rowNumber,
+          'error',
+          'invalid',
+          field,
+          rawCell(record, mapping[field]),
+          `max ${max} characters`,
+        ),
+      )
       continue
     }
 
@@ -266,6 +338,12 @@ export function validateStudents(records, mapping, options = {}) {
       for (const field of missing) {
         issues.push(issue(record.rowNumber, 'error', 'missing', field, ''))
       }
+      continue
+    }
+
+    // A prototype-polluting key can never be a real student id.
+    if (isForbiddenKey(id)) {
+      issues.push(issue(record.rowNumber, 'error', 'invalid', 'id', id, 'reserved key'))
       continue
     }
 
@@ -302,17 +380,14 @@ export function validateStudents(records, mapping, options = {}) {
   return { accepted, issues }
 }
 
-// Accepts [[1,2],[2,3]] JSON or "1,2;2,3" pairs.
+// Accepts [[1,2],[2,3]] JSON or "1,2;2,3" pairs. The JSON branch is parsed with
+// safeJsonParse so a crafted cell cannot inject prototype keys.
 export function parseBrokenSeats(raw) {
   const text = String(raw || '').trim()
   if (!text) return []
   if (text.startsWith('[')) {
-    try {
-      const parsed = JSON.parse(text)
-      if (Array.isArray(parsed)) return parsed
-    } catch {
-      // not JSON, fall through to the pair format
-    }
+    const parsed = safeJsonParse(text, null)
+    if (Array.isArray(parsed)) return parsed
   }
   return text
     .split(';')
@@ -330,7 +405,7 @@ export function validateRooms(records, mapping, options = {}) {
   const seen = new Map()
 
   for (const record of records) {
-    const get = (key) => valueAt(record, mapping[key])
+    const get = (key) => cell(record, mapping[key])
 
     if (record.isBlank) {
       issues.push(issue(record.rowNumber, 'error', 'blank', '', ''))
@@ -342,6 +417,21 @@ export function validateRooms(records, mapping, options = {}) {
     const rawCols = get('cols')
     const rows = Number(rawRows)
     const cols = Number(rawCols)
+
+    // Raw-value check first, so truncation can never mask an over-long field.
+    if (tooLong(record, mapping.name, MAX_TEXT)) {
+      issues.push(
+        issue(
+          record.rowNumber,
+          'error',
+          'invalid',
+          'name',
+          rawCell(record, mapping.name),
+          `max ${MAX_TEXT} characters`,
+        ),
+      )
+      continue
+    }
 
     const missing = []
     if (!name) missing.push(['name', ''])
@@ -358,6 +448,12 @@ export function validateRooms(records, mapping, options = {}) {
     }
 
     const key = name.toLowerCase()
+    if (name.length > MAX_TEXT) {
+      issues.push(
+        issue(record.rowNumber, 'error', 'invalid', 'name', name, `max ${MAX_TEXT} characters`),
+      )
+      continue
+    }
     if (seen.has(key)) {
       issues.push(
         issue(record.rowNumber, 'error', 'duplicate', 'name', name, `first seen on row ${seen.get(key)}`),

@@ -7,8 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
-    "test": "node --test src/seating.test.js src/exams.test.js src/storage.test.js src/print.test.js src/invigilators.test.js src/edits.test.js src/i18n.test.js src/search.test.js && npm run check:i18n",
+    "test": "node --test src/seating.test.js src/exams.test.js src/storage.test.js src/print.test.js src/invigilators.test.js src/edits.test.js src/i18n.test.js src/search.test.js src/security.test.js src/parse.test.js && npm run check:i18n",
     "check:i18n": "node scripts/check-i18n.mjs",
+    "check:security": "node scripts/check-security.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

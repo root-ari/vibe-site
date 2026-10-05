@@ -54,8 +54,13 @@ export function searchStudents(students, query, limit = 30) {
     .slice(0, limit)
 }
 
-/** Bench a column belongs to, counted from the left of each row. */
+/**
+ * Bench a column belongs to, counted from the left of each row.
+ * Returns null when the room is gone: an assignment can outlive the room it
+ * points at, so callers must not assume the room still exists.
+ */
 export function benchOf(room, col) {
+  if (!room) return null
   const per = Math.max(1, Math.min(Number(room.seatsPerBench) || 1, room.cols))
   return Math.floor((col - 1) / per) + 1
 }

@@ -558,9 +558,15 @@ export default function PlanPage() {
             </div>
 
             <div className="mt-4 overflow-x-auto">
-              <div className="inline-flex flex-col gap-1.5">
+              <div
+                role="grid"
+                aria-label={room.name}
+                aria-rowcount={room.cells.length}
+                aria-colcount={room.cells[0]?.length ?? 0}
+                className="inline-flex flex-col gap-1.5"
+              >
                 {room.cells.map((line) => (
-                  <div key={line[0].row} className="flex gap-1.5">
+                  <div key={line[0].row} role="row" className="flex gap-1.5">
                     {line.map((cell) => {
                       const base =
                         'grid h-14 w-14 shrink-0 place-items-center rounded-md border'
@@ -568,13 +574,12 @@ export default function PlanPage() {
                         return (
                           <span
                             key={cell.col}
+                            role="gridcell"
+                            aria-label={`${t('plan.cell.broken')} ${n(cell.row)},${n(cell.col)}`}
                             className={`${base} border-slate-300 bg-slate-200 text-slate-500`}
                             title={t('plan.cell.broken')}
                           >
                             <span aria-hidden="true">✕</span>
-                            <span className="sr-only">
-                              {t('plan.cell.broken')} {n(cell.row)},{n(cell.col)}
-                            </span>
                           </span>
                         )
                       }
@@ -582,13 +587,12 @@ export default function PlanPage() {
                         return (
                           <span
                             key={cell.col}
+                            role="gridcell"
+                            aria-label={`${t('plan.cell.skipped')} ${n(cell.row)},${n(cell.col)}`}
                             className={`${base} border-dashed border-slate-300 bg-slate-50 text-slate-400`}
                             title={t('plan.cell.skipped')}
                           >
                             <span aria-hidden="true">–</span>
-                            <span className="sr-only">
-                              {t('plan.cell.skipped')} {n(cell.row)},{n(cell.col)}
-                            </span>
                           </span>
                         )
                       }
@@ -596,6 +600,8 @@ export default function PlanPage() {
                         return (
                           <span
                             key={cell.col}
+                            role="gridcell"
+                            aria-label={`${n(cell.row)},${n(cell.col)} ${t('plan.cell.free')}`}
                             className={`${base} border-slate-200 bg-white text-xs text-slate-400`}
                             title={t('plan.cell.free')}
                           >
@@ -635,6 +641,8 @@ export default function PlanPage() {
                         return (
                           <span
                             key={cell.col}
+                            role="gridcell"
+                            aria-label={label}
                             className={`${base} px-1 text-center text-[10px] leading-tight ${color}${ring}`}
                             title={label}
                           >
@@ -646,6 +654,8 @@ export default function PlanPage() {
                         <button
                           key={cell.col}
                           type="button"
+                          role="gridcell"
+                          aria-label={label}
                           draggable
                           title={label}
                           onDragStart={() => setDragKey(key)}
